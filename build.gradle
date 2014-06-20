@@ -1,0 +1,42 @@
+description = 'Viking Shell'
+apply plugin: 'base'
+//apply plugin: 'java'
+//apply plugin: 'eclipse'
+apply plugin: 'groovy'
+apply plugin: 'application'
+
+repositories {
+    maven { url "http://repo.springsource.org/libs-milestone" }
+    maven { url "http://repo.springsource.org/libs-release" }
+    maven { url "http://artifacts.iteego.com/artifactory/public-release-local" }
+
+    mavenLocal()
+    mavenCentral()
+
+}
+
+dependencies {
+    compile 'org.codehaus.groovy:groovy-all:2.1.3'
+	compile "org.codehaus.groovy:groovy-streaming-template-engine:2.2.1.1"
+	compile 'org.apache.commons:commons-vfs2:2.0'
+    compile "org.springframework.shell:spring-shell:$springShellVersion"
+    compile "org.gradle:gradle-tooling-api:1.11"
+//    compile "net.lingala.zip4j:zip4j:1.2.3"
+    compile "org.zeroturnaround:zt-zip:1.7"
+	compile 'org.eclipse.jgit:org.eclipse.jgit:3.1.0.201310021548-r'
+    testCompile "junit:junit:$junitVersion"
+    runtime "log4j:log4j:$log4jVersion"
+}
+
+mainClassName = "org.viking.shell.Main"
+
+defaultTasks 'installApp'
+
+run {
+    standardInput = System.in
+}
+
+task wrapper(type: Wrapper) {
+    description = 'Generates gradlew[.bat] scripts'
+    gradleVersion = '1.2'
+}
