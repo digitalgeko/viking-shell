@@ -6,6 +6,19 @@ apply plugin: 'sonar-runner'
 apply plugin: 'groovy'
 apply plugin: 'application'
 
+
+
+def groupId = 'org.vikingportlets'
+def artifactId = "viking-shell"
+def versionNumber = '0.1'
+
+group = groupId
+version = versionNumber
+
+
+description = """Viking Shell"""
+
+
 repositories {
     maven { url "http://repo.springsource.org/libs-milestone" }
     maven { url "http://repo.springsource.org/libs-release" }
