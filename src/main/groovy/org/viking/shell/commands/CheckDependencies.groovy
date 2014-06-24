@@ -2,7 +2,6 @@ package org.viking.shell.commands
 
 import org.springframework.stereotype.Component
 import org.viking.shell.commands.utils.CommandUtils
-import org.viking.shell.commands.utils.InvalidURLException
 
 import java.util.logging.Logger
 

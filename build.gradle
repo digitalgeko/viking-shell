@@ -1,5 +1,6 @@
 description = 'Viking Shell'
 apply plugin: 'base'
+apply plugin: 'sonar-runner'
 //apply plugin: 'java'
 //apply plugin: 'eclipse'
 apply plugin: 'groovy'
@@ -39,4 +40,15 @@ run {
 task wrapper(type: Wrapper) {
     description = 'Generates gradlew[.bat] scripts'
     gradleVersion = '1.2'
+}
+
+sonarRunner {
+    sonarProperties {
+        property "sonar.host.url", "http://192.241.239.69:9000"
+        property "sonar.jdbc.url", "jdbc:mysql://localhost:3306/sonarqube?useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true"
+        property "sonar.jdbc.driverClassName", "com.mysql.jdbc.Driver"
+        property "sonar.jdbc.username", "sonarqube"
+        property "sonar.jdbc.password", "sonarqube"
+        property "sonar.language", "grvy"
+    }
 }

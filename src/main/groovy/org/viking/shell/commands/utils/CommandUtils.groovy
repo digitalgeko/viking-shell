@@ -1,12 +1,7 @@
 package org.viking.shell.commands.utils
 
-import groovy.text.GStringTemplateEngine
 import groovy.text.StreamingTemplateEngine
-import org.gradle.tooling.GradleConnector
 import org.zeroturnaround.zip.ZipUtil
-
-import java.lang.reflect.Array
-
 
 /**
  * Created by juanitoramonster on 4/8/14.

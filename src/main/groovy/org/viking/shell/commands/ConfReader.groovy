@@ -6,8 +6,6 @@ import org.springframework.stereotype.Component
 import org.viking.shell.commands.utils.CommandUtils
 import org.viking.shell.commands.utils.GitUtils
 
-import java.util.jar.JarFile
-
 /**
  * Created by juanitoramonster on 12/16/13.
  */

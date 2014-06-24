@@ -2,12 +2,12 @@ package org.viking.shell.commands.utils
 
 import org.apache.commons.vfs2.FileChangeEvent
 import org.apache.commons.vfs2.FileListener
-import org.apache.commons.vfs2.FileObject
 import org.apache.commons.vfs2.FileSystemManager
 import org.apache.commons.vfs2.VFS
 import org.apache.commons.vfs2.impl.DefaultFileMonitor
 
 import java.nio.file.FileSystemException
+
 import static groovy.io.FileType.FILES
 
 /**

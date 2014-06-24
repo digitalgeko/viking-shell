@@ -1,6 +1,7 @@
 package org.viking.shell.commands.utils
 
-import org.eclipse.jgit.api.*
+import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.api.PullCommand
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider

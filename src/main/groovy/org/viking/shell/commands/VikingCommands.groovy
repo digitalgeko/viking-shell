@@ -1,6 +1,5 @@
 package org.viking.shell.commands
 
-import groovy.text.GStringTemplateEngine
 import jline.ConsoleReader
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.shell.core.CommandMarker
@@ -11,8 +10,6 @@ import org.viking.shell.commands.utils.CommandUtils
 import org.viking.shell.commands.utils.InvalidURLException
 import org.viking.shell.commands.utils.LiferayVersionUtils
 import org.viking.shell.commands.utils.ReloadUtils
-
-import java.util.jar.JarFile
 
 @Component
 class VikingCommands implements CommandMarker {
