@@ -115,6 +115,9 @@ class CommandUtils {
         def content = useDefaultDir ? new File("$homeDir${File.separator}.viking-shell", source) : new File(source)
         def engine = new StreamingTemplateEngine()
         def output = new File(dest)
+		if (output.exists()) {
+			output.delete()
+		}
         output.write(engine.createTemplate(content).make(bindingData).toString())
     }
 

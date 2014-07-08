@@ -118,6 +118,11 @@ class VikingCommands implements CommandMarker {
 							"dbuser": varCommands.get("dbuser", "databaseConnection"),
 							"dbpass": dbpass,
 					])
+					CommandUtils.generate("templates/baseConf/configFiles/setenv.sh", "${CommandUtils.getTomcatPath(projectDir)}/bin/setenv.sh", [
+							"projectName":projectName,
+							"dbuser": varCommands.get("dbuser", "databaseConnection"),
+							"dbpass": dbpass,
+					])
 
 					def startScript = CommandUtils.getStartScript(projectDir)
 					def binDir = startScript - "startup.sh"
@@ -177,7 +182,7 @@ class VikingCommands implements CommandMarker {
 	}
 
 	def projectNameIsValid(String name) {
-		name.indexOf(" ") == -1
+		name.matches("[a-zA-Z]+")
 	}
 
     @CliCommand(value = "new-project", help = "Create a new Viking project.")
@@ -214,7 +219,7 @@ You may now proceed with the new project creation."""
         def projectName = cr.readLine("project name: ").capitalize()
 
 		while(!projectNameIsValid(projectName)) {
-			println "Project name should not contain spaces"
+			println "Project name should only contain letters"
 			projectName = cr.readLine("project name: ").capitalize()
 		}
 
@@ -234,8 +239,9 @@ You may now proceed with the new project creation."""
 
 		// Copy templates
 		CommandUtils.execCommand(["cp", "-r", "$templatesDir.path${File.separator}baseConf${File.separator}.templates", "$outputDir"])
-		CommandUtils.execCommand(["cp", "$templatesDir.path${File.separator}baseConf${File.separator}.templates${File.separator}build.gradle", outputDir])
-
+		CommandUtils.generate("templates/baseConf/.templates/build.gradle", "$outputDir/build.gradle", [
+				projectName: projectName
+		])
 		// run gradle new
 		CommandUtils.executeGradle("${projectDir}${File.separator}${projectName}", "new")
 
@@ -321,7 +327,8 @@ Port 8080 is not responding..."""
 				deployWar(warFile.path)
 			} else {
 				CommandUtils.executeGradle(activeProject.portletsPath, "war")
-				deployWar("${activeProject.portletsPath}/build/libs/${activeProject.name}.war")
+				def warFile = new File("${activeProject.portletsPath}/build/libs").listFiles().find {it.name.endsWith(".war")}
+				deployWar(warFile.path)
 			}
 			return "$activeProject.name successfully deployed."
         }
@@ -360,8 +367,8 @@ Port 8080 is not responding..."""
 		return "Please set an active project."
 	}
 
-	@CliCommand(value = "export-site", help = "Runs site builder")
-	def exportSite() {
+	@CliCommand(value = "build-site", help = "Runs site builder")
+	def buildSite() {
 		def activeProject = confReader.activeProject
 		if (activeProject) {
 			println "Building the site..."
@@ -413,9 +420,10 @@ Port 8080 is not responding..."""
 		if (activeProject) {
 			println "Deploying project and its dependencies..."
 			deployDependencies()
-
 			deploy("portlets")
 			deploy("theme")
+
+			buildSite()
 
 			return "Successfully deployed the project and its dependencies"
 		}
