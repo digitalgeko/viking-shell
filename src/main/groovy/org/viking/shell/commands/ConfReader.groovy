@@ -5,6 +5,7 @@ import org.springframework.shell.core.JLineShellComponent
 import org.springframework.stereotype.Component
 import org.viking.shell.commands.utils.CommandUtils
 import org.viking.shell.commands.utils.GitUtils
+import org.viking.shell.models.VikingProject
 
 /**
  * Created by juanitoramonster on 12/16/13.
@@ -82,7 +83,7 @@ class ConfReader {
 			def projectsDir = varCommands.get("projectsDir",null)
 
 			def path = "${CommandUtils.homeDir}/${projectsDir}/${projectDir}"
-			return [
+			return new VikingProject(
 					dir: projectDir,
 					name: projectName,
 					path: path,
@@ -90,7 +91,7 @@ class ConfReader {
 					themePath: "${path}/${projectName}-theme",
 					liferayPath: CommandUtils.getLiferayDir(new File(path)),
 					tomcatPath: CommandUtils.getTomcatPath(new File(path)),
-			]
+			)
 		}
 
 		return null

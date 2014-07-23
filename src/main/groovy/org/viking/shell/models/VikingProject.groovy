@@ -7,11 +7,17 @@ package org.viking.shell.models
  */
 class VikingProject {
 
-	def projectName
+	String dir
+	String name
+	String path
+	String portletsPath
+	String themePath
+	String liferayPath
+	String tomcatPath
 
-	VikingProject(projectName) {
-		this.projectName = projectName
+	def getPort() {
+		def serverXmlFile = new File(tomcatPath, "conf/server.xml")
+		def xml = new XmlSlurper().parseText(serverXmlFile.text)
+		xml.Service.Connector.find{it.@protocol.text().startsWith("HTTP")}.collect{ it.@port }.first()
 	}
-
-
 }

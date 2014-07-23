@@ -29,12 +29,13 @@ class VikingCommands implements CommandMarker {
     @CliCommand(value = "start", help = "Starts Liferay for the active project.")
     def startLiferay() {
 		try {
-			if (varCommands.get("activeProject", null) != "Undefined") {
+			def activeProject = confReader.activeProject
+			if (activeProject) {
 				liferayManager("startScript")
 				println "Starting Liferay... please be patient!"
 				Thread.sleep(2500)
-				new URL("http://localhost:8080").text
-				return "Something is listening in port 8080... might be your Liferay!"
+				new URL("http://localhost:"+activeProject.port).text
+				return "Something is listening in port $activeProject.port... might be your Liferay!"
 			}
 		} catch (e) {
 			e.printStackTrace()
@@ -191,8 +192,12 @@ class VikingCommands implements CommandMarker {
 
         //Verify if Liferay is running
         def activeLiferay = null
+		def activeProject = confReader.activeProject
         try {
-           activeLiferay = new URL("http://localhost:8080").text
+			if (activeProject) {
+				activeLiferay = new URL("http://localhost:"+activeProject.port).text
+			}
+
         } catch (Exception e) {
            // TODO
         }
@@ -288,6 +293,12 @@ You may now proceed with the new project creation."""
 
 			def activeProject = confReader.activeProject
 			ReloadUtils.listenForChanges(activeProject.path, activeProject.name)
+			try {
+				println "Configured port:"+activeProject.port
+			} catch (e) {
+				e.printStackTrace()
+			}
+
         } else {
             return  "Invalid project."
         }
@@ -297,15 +308,19 @@ You may now proceed with the new project creation."""
 
     @CliCommand(value = "status", help = "Liferay status.")
     def liferayStatus() {
-        try {
-            new URL("http://localhost:8080").text
-            return """Active project: ${varCommands.get("activeProject", null)}
-Something is listening in port 8080... might be your Liferay!"""
-        } catch (Exception e) {
-            return """Active project: ${varCommands.get("activeProject", null)}
-Port 8080 is not responding..."""
-        }
+		def activeProject = confReader.activeProject
+		if (activeProject) {
+			try {
+				new URL("http://localhost:"+activeProject.port).text
+				return """Active project: $activeProject.name
+Something is listening in port $activeProject.port... might be your Liferay!"""
 
+
+			} catch (Exception e) {
+				return """Active project: $activeProject.name
+Port $activeProject.port is not responding..."""
+			}
+		}
     }
 
 	def deployWar (String warPath) {
@@ -322,9 +337,13 @@ Port 8080 is not responding..."""
         def activeProject = confReader.activeProject
         if (activeProject) {
 			if (target == "theme") {
-				CommandUtils.execCommand("mvn package -f \"${activeProject.themePath}/pom.xml\"", true)
-				def warFile = new File("${activeProject.themePath}/target").listFiles().find {it.name.endsWith(".war")}
-				deployWar(warFile.path)
+				new File(activeProject.path).listFiles().each {
+					if (it.name.endsWith("-theme")) {
+						CommandUtils.execCommand("mvn package -f \"${it.path}/pom.xml\"", true)
+						def warFile = new File("${it.path}/target").listFiles().find {it.name.endsWith(".war")}
+						deployWar(warFile.path)
+					}
+				}
 			} else {
 				CommandUtils.executeGradle(activeProject.portletsPath, "war")
 				def warFile = new File("${activeProject.portletsPath}/build/libs").listFiles().find {it.name.endsWith(".war")}
@@ -423,8 +442,6 @@ Port 8080 is not responding..."""
 			deploy("portlets")
 			deploy("theme")
 
-			buildSite()
-
 			return "Successfully deployed the project and its dependencies"
 		}
 		return "Please set an active project."
@@ -454,7 +471,6 @@ Port 8080 is not responding..."""
 							def downloadsDir = "$activeProject.path"
 							def dependencyFile = new File(downloadsDir, "dependencies/$dependency.name")
 							if (!dependencyFile.exists()) {
-								println "Downloading $dependency.src"
 								CommandUtils.download(dependency.src, "dependencies", dependency.name, downloadsDir)
 							}
 							deployWar(dependencyFile.path)

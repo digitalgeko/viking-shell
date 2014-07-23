@@ -1,7 +1,12 @@
 package org.viking.shell.commands.utils
 
 import groovy.text.StreamingTemplateEngine
+import org.springframework.beans.factory.annotation.Autowired
+import org.viking.shell.commands.ConfReader
 import org.zeroturnaround.zip.ZipUtil
+
+import java.nio.file.Files
+import java.security.MessageDigest
 
 /**
  * Created by juanitoramonster on 4/8/14.
@@ -143,26 +148,42 @@ class CommandUtils {
 			downloadsDir = "$homeDir/.viking-shell/downloads"
 		}
 
-        // Verify that the destination directory exists and create it if not
+		MessageDigest md5 = MessageDigest.getInstance("MD5");
+		md5.update(url.bytes);
+		BigInteger hash = new BigInteger(1, md5.digest());
+		def urlHash = hash.toString(16)
+
+		// Verify that the destination directory exists and create it if not
         def destDir = new File("$downloadsDir/$dest")
         if (!destDir.exists()) {
             destDir.mkdirs()
         }
-        // Verify that the url is correct
-        if (!new URL(url).openConnection().responseCode == "200") {
-            throw new InvalidURLException()
-        }
-        // Download file
+
+		// Download file
 		if (fileName == null) {
 			fileName = url.split("/").last().toString()
 		}
 		File destFile = new File(destDir, fileName)
 
-        if (!destFile.exists()) {
-            def output = new BufferedOutputStream(new FileOutputStream(destFile))
-            output << new URL(url).openStream()
-            output.close()
-        }
+		def cachedFile = new File("$homeDir/.viking-shell/downloads/cache", urlHash)
+		if (!cachedFile.parentFile.exists()) {
+			cachedFile.parentFile.mkdirs()
+		}
+		if (!destFile.exists()) {
+			if (cachedFile.exists()) {
+				Files.copy(cachedFile.toPath(), destFile.toPath())
+			} else {
+				println "Downloading $url"
+				// Verify that the url is correct
+				if (!new URL(url).openConnection().responseCode == "200") {
+					throw new InvalidURLException()
+				}
+				def output = new BufferedOutputStream(new FileOutputStream(destFile))
+				output << new URL(url).openStream()
+				output.close()
+				Files.copy(destFile.toPath(), cachedFile.toPath())
+			}
+		}
     }
 
     def static executeGradle(String project, tasks) {
@@ -183,7 +204,6 @@ class CommandUtils {
         }
         destFile << srcFile.content
     }
-
 }
 
 class InvalidURLException extends Exception {

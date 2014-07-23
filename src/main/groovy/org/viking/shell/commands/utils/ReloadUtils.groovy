@@ -27,9 +27,14 @@ class ReloadUtils {
 		try {
 			if (!monitorsMap["$projectPath/$projectName"]) {
 				def RELOADABLES = [
-						[projectType: "portlet", path:"$projectPath/$projectName/public", basePath: "$projectPath/$projectName"],
-						[projectType: "theme", path:"$projectPath/$projectName-theme/src/main/webapp", basePath: "$projectPath/$projectName-theme"],
+						[projectType: "portlet", path:"$projectPath/$projectName/public", basePath: "$projectPath/$projectName"]
 				]
+
+				new File(projectPath).listFiles().each {
+					if (it.name.endsWith("-theme")) {
+						RELOADABLES.add([projectType: "theme", path:"$projectPath/$it.name/src/main/webapp", basePath: "$projectPath/$it.name"])
+					}
+				}
 
 				def tomcatPath = CommandUtils.getTomcatPath(new File(projectPath))
 				FileSystemManager fsManager = null;
@@ -60,7 +65,8 @@ class ReloadUtils {
 								destFile = new File(getDestTempTomcatDir(projectName), relativePath)
 								break
 							case "theme":
-								destFile = new File(getDestWebappsDir("$projectName-theme"), relativePath)
+								def themeName = reloadable.basePath.substring(reloadable.basePath.lastIndexOf("/")+1)
+								destFile = new File(getDestWebappsDir(themeName), relativePath)
 								break
 						}
 
