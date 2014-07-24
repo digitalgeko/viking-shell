@@ -20,4 +20,13 @@ class VikingProject {
 		def xml = new XmlSlurper().parseText(serverXmlFile.text)
 		xml.Service.Connector.find{it.@protocol.text().startsWith("HTTP")}.collect{ it.@port }.first()
 	}
+
+	def isRunning () {
+		try {
+			new URL("http://localhost:"+port).text
+			return true
+		} catch (e) {
+			return false
+		}
+	}
 }

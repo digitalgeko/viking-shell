@@ -7,6 +7,8 @@ import org.apache.commons.vfs2.VFS
 import org.apache.commons.vfs2.impl.DefaultFileMonitor
 
 import java.nio.file.FileSystemException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 import static groovy.io.FileType.FILES
 
@@ -73,7 +75,7 @@ class ReloadUtils {
 						if (srcFile.name.endsWith(".coffee")) {
 							CommandUtils.execCommand(["coffee", "--bare", "--output", destFile.parent.replace("/coffee", "/js"), "--compile", srcFile.path])
 						} else {
-							destFile.text = srcFile.text
+							Files.copy(srcFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
 						}
 
 						// Reload sass files that import srcFile
@@ -93,21 +95,21 @@ class ReloadUtils {
 
 				def fm = new DefaultFileMonitor(new FileListener() {
 					public void fileCreated(FileChangeEvent event) throws Exception {
-						def srcFile = event.file.localFile
+						def srcFile = new File(event.file.getURL().toURI())
 						if (!shouldIgnore(srcFile)) {
 							writeDestWithSource(srcFile)
 						}
 					}
 
 					public void fileDeleted(FileChangeEvent event) throws Exception {
-						def srcFile = event.file.localFile
+						def srcFile = new File(event.file.getURL().toURI())
 						if (!shouldIgnore(srcFile)) {
 							getDestFile(srcFile).delete()
 						}
 					}
 
 					public void fileChanged(FileChangeEvent event) throws Exception {
-						def srcFile = event.file.localFile
+						def srcFile = new File(event.file.getURL().toURI())
 						if (!shouldIgnore(srcFile)) {
 							writeDestWithSource(srcFile)
 						}

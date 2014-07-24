@@ -3,6 +3,7 @@ package org.viking.shell.commands
 import jline.ConsoleReader
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.shell.core.CommandMarker
+import org.springframework.shell.core.annotation.CliAvailabilityIndicator
 import org.springframework.shell.core.annotation.CliCommand
 import org.springframework.shell.core.annotation.CliOption
 import org.springframework.stereotype.Component
@@ -26,7 +27,17 @@ class VikingCommands implements CommandMarker {
 	@Autowired
 	def ConfReader confReader
 
-    @CliCommand(value = "start", help = "Starts Liferay for the active project.")
+	@CliAvailabilityIndicator(["status","deploy","full-deploy","dependencies-deploy","build-site","tail-log"])
+	public boolean isOnlineCommandAvailable() {
+		return confReader.activeProject.isRunning();
+	}
+
+	@CliAvailabilityIndicator(["start", "restore-database"])
+	public boolean isOfflineCommandAvailable() {
+		return confReader.activeProject == null || !confReader.activeProject.isRunning();
+	}
+
+	@CliCommand(value = "start", help = "Starts Liferay for the active project.")
     def startLiferay() {
 		try {
 			def activeProject = confReader.activeProject
@@ -106,7 +117,6 @@ class VikingCommands implements CommandMarker {
 							CommandUtils.unzip(it.path, "${projectDir}")
 						}
 					}
-
 
 					CommandUtils.execCommand("mkdir ${CommandUtils.getLiferayDir(projectDir)}/deploy")
 
@@ -274,6 +284,7 @@ You may now proceed with the new project creation."""
 
     @CliCommand(value = "use-project", help = "Set the active project.")
     def useProject() {
+
         def projectList = new File("${CommandUtils.homeDir}/${varCommands.get("projectsDir", null)}").listFiles().findAll { it.name.endsWith("-env") }
         def validProjectIds = 0..(projectList.size() - 1)
         projectList.eachWithIndex { f, i ->
@@ -293,6 +304,7 @@ You may now proceed with the new project creation."""
 
 			def activeProject = confReader.activeProject
 			ReloadUtils.listenForChanges(activeProject.path, activeProject.name)
+
 			try {
 				println "Configured port:"+activeProject.port
 			} catch (e) {
@@ -354,25 +366,6 @@ Port $activeProject.port is not responding..."""
         return "Please set an active project."
     }
 
-	@CliCommand(value = "prod-war", help = "Build and deploy the active project")
-	def prodWar( @CliOption(
-			key = "target"
-	) String target) {
-		def activeProject = confReader.activeProject
-		if (activeProject) {
-			if (target == "theme") {
-				CommandUtils.execCommand("mvn package -f \"${activeProject.themePath}/pom.xml\"", true)
-				def warFile = new File("${activeProject.themePath}/target").listFiles().find {it.name.endsWith(".war")}
-				deployWar(warFile.path)
-			} else {
-				CommandUtils.executeGradle(activeProject.portletsPath, "war")
-				deployWar("${activeProject.portletsPath}/build/libs/${activeProject.name}.war")
-			}
-			return "$activeProject.name successfully deployed."
-		}
-		return "Please set an active project."
-	}
-
 	@CliCommand(value = "add-portlet", help = "Adds a portlet to the active project")
 	def addPortlet( @CliOption(
 			key = "name"
@@ -406,7 +399,7 @@ Port $activeProject.port is not responding..."""
         return "Please set an active project."
     }
 
-	@CliCommand(value = "update", help = "Update templates.")
+	@CliCommand(value = "update", help = "Updates templates located in ~/.viking-shell/templates.")
 	def update() {
 		println "Updating templates..."
 		confReader.updateTemplates()
@@ -448,7 +441,7 @@ Port $activeProject.port is not responding..."""
 
 	}
 
-	@CliCommand(value = "dependencies-deploy", help = "Deploy the project and its dependencies.")
+	@CliCommand(value = "dependencies-deploy", help = "Deploy the project's dependencies.")
 	def deployDependencies() {
 		def activeProject = confReader.activeProject
 		if (activeProject) {
