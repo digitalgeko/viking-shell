@@ -366,6 +366,16 @@ Port $activeProject.port is not responding..."""
         return "Please set an active project."
     }
 
+	@CliCommand(value = "prod-war", help = "Build and deploy the active project")
+	def prodWar() {
+		def activeProject = confReader.activeProject
+		if (activeProject) {
+			CommandUtils.executeGradle(activeProject.portletsPath, "war -Penv=prod")
+			return "Prod WAR file generated in ${activeProject.portletsPath}/build/libs."
+		}
+		return "Please set an active project."
+	}
+
 	@CliCommand(value = "add-portlet", help = "Adds a portlet to the active project")
 	def addPortlet( @CliOption(
 			key = "name"
