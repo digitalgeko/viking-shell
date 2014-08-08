@@ -27,14 +27,14 @@ class ReloadUtils {
 
 	static listenForChanges(String projectPath, String projectName) {
 		try {
-			if (!monitorsMap["$projectPath/$projectName"]) {
+			if (!monitorsMap["$projectPath${File.separator}$projectName"]) {
 				def RELOADABLES = [
-						[projectType: "portlet", path:"$projectPath/$projectName/public", basePath: "$projectPath/$projectName"]
+						[projectType: "portlet", path:"$projectPath${File.separator}$projectName${File.separator}public", basePath: "$projectPath${File.separator}$projectName"]
 				]
 
 				new File(projectPath).listFiles().each {
 					if (it.name.endsWith("-theme")) {
-						RELOADABLES.add([projectType: "theme", path:"$projectPath/$it.name/src/main/webapp", basePath: "$projectPath/$it.name"])
+						RELOADABLES.add([projectType: "theme", path:"$projectPath${File.separator}$it.name${File.separator}src${File.separator}main${File.separator}webapp", basePath: "$projectPath${File.separator}$it.name"])
 					}
 				}
 
@@ -58,7 +58,7 @@ class ReloadUtils {
 				def writeDestWithSource = null
 				writeDestWithSource = { File srcFile ->
 					try {
-						def reloadable = RELOADABLES.find {srcFile.path.startsWith(it.path)}
+						def reloadable = RELOADABLES.find { srcFile.path.startsWith(it.path) }
 						def relativePath = srcFile.path - reloadable.path
 
 						File destFile = null
@@ -67,13 +67,13 @@ class ReloadUtils {
 								destFile = new File(getDestTempTomcatDir(projectName), relativePath)
 								break
 							case "theme":
-								def themeName = reloadable.basePath.substring(reloadable.basePath.lastIndexOf("/")+1)
+								def themeName = reloadable.basePath.substring(reloadable.basePath.lastIndexOf(File.separator)+1)
 								destFile = new File(getDestWebappsDir(themeName), relativePath)
 								break
 						}
 
 						if (srcFile.name.endsWith(".coffee")) {
-							CommandUtils.execCommand(["coffee", "--bare", "--output", destFile.parent.replace("/coffee", "/js"), "--compile", srcFile.path])
+							CommandUtils.execCommand(["coffee", "--bare", "--output", destFile.parent.replace("${File.separator}coffee", "${File.separator}js"), "--compile", srcFile.path])
 						} else {
 							Files.copy(srcFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
 						}
@@ -123,7 +123,7 @@ class ReloadUtils {
 				}
 				fm.start();
 
-				monitorsMap["$projectPath/$projectName"] = fm
+				monitorsMap["$projectPath${File.separator}$projectName"] = fm
 			}
 		} catch (e) {
 			e.printStackTrace()

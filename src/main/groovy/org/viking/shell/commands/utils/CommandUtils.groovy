@@ -1,11 +1,14 @@
 package org.viking.shell.commands.utils
 
 import groovy.text.StreamingTemplateEngine
+import org.apache.commons.io.FileUtils
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.shell.support.util.OsUtils
 import org.viking.shell.commands.ConfReader
 import org.zeroturnaround.zip.ZipUtil
 
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 
 /**
@@ -26,7 +29,12 @@ class CommandUtils {
 
     def static execCommand(String command, Boolean verbose = true) {
 //        def proc = command.execute()
-        def proc = Runtime.getRuntime().exec(["bash","-c",command] as String[])
+        def proc
+		if (OsUtils.isWindows()) {
+			proc = Runtime.getRuntime().exec(["cmd.exe","/C",command] as String[])
+		} else {
+			proc = Runtime.getRuntime().exec(["bash","-c",command] as String[])
+		}
         def output = ""
         proc.in.eachLine { line ->
             output += line
@@ -40,7 +48,6 @@ class CommandUtils {
 		proc.waitFor()
         if (proc.exitValue() == 0) {
             return output
-
         } else {
             return proc.err.text
         }
@@ -54,6 +61,10 @@ class CommandUtils {
 			println "stdout: ${proc.in.text}"
 		}
 		proc
+	}
+
+	def static copyPaths(String srcPath, String destPath) {
+		FileUtils.copyDirectoryToDirectory(new File(srcPath), new File(destPath))
 	}
 
     def static unzip(pathTozip, destPath) {
@@ -94,7 +105,11 @@ class CommandUtils {
             if (f.name.contains("liferay-portal") && f.isDirectory()) {
                 f.eachFile { sf ->
                     if (sf.name.contains("tomcat")) {
-                        script = "${sf.path}/bin/startup.sh"
+						if (OsUtils.isWindows()) {
+							script = "${sf.path}${File.separator}bin${File.separator}startup.bat"
+						} else {
+							script = "${sf.path}/bin/startup.sh"
+						}
                     }
                 }
             }
@@ -108,7 +123,11 @@ class CommandUtils {
             if (f.name.contains("liferay-portal") && f.isDirectory()) {
                 f.eachFile { sf ->
                     if (sf.name.contains("tomcat")) {
-                        script = "${sf.path}/bin/shutdown.sh"
+						if (OsUtils.isWindows()) {
+							script = "${sf.path}${File.separator}bin${File.separator}shutdown.bat"
+						} else {
+							script = "${sf.path}/bin/shutdown.sh"
+						}
                     }
                 }
             }

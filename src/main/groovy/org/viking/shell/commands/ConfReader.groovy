@@ -82,13 +82,13 @@ class ConfReader {
 			def projectName = varCommands.get("activeProject", null)
 			def projectsDir = varCommands.get("projectsDir",null)
 
-			def path = "${CommandUtils.homeDir}/${projectsDir}/${projectDir}"
+			def path = "${CommandUtils.homeDir}${File.separator}${projectsDir}${File.separator}${projectDir}"
 			return new VikingProject(
 					dir: projectDir,
 					name: projectName,
 					path: path,
-					portletsPath: "${path}/${projectName}",
-					themePath: "${path}/${projectName}-theme",
+					portletsPath: "${path}${File.separator}${projectName}",
+					themePath: "${path}${File.separator}${projectName}-theme",
 					liferayPath: CommandUtils.getLiferayDir(new File(path)),
 					tomcatPath: CommandUtils.getTomcatPath(new File(path)),
 			)
