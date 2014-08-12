@@ -15,6 +15,48 @@ class CheckDependencies {
     def performUpdate = true
 
     def check() {
+
+		if (SystemUtils.IS_OS_LINUX) {
+			if (CommandUtils.isInstalled("apt-get")) {
+				if (!CommandUtils.isInstalled("git")) {
+					updateAptGet(performUpdate)
+					CommandUtils.execCommand("sudo apt-get -y install git", true)
+				}
+
+				if (!CommandUtils.isInstalled("svn")) {
+					updateAptGet(performUpdate)
+					CommandUtils.execCommand("sudo apt-get -y install subversion", true)
+				}
+
+				if (!CommandUtils.isInstalled("mysql")) {
+					updateAptGet(performUpdate)
+					CommandUtils.execCommand("sudo apt-get -y install mysql-server mysql-client", true)
+				}
+
+				if (!CommandUtils.isInstalled("mvn")) {
+					updateAptGet(performUpdate)
+					CommandUtils.execCommand("sudo apt-get -y install maven", true)
+				}
+
+				if (!CommandUtils.isInstalled("node")) {
+					updateAptGet(performUpdate)
+					CommandUtils.execCommand("sudo apt-get -y update", true)
+					CommandUtils.execCommand("sudo apt-get -y install nodejs-legacy", true)
+					CommandUtils.execCommand("sudo apt-get -y install npm", true)
+				}
+
+				if (CommandUtils.isInstalled("npm")) {
+					if (!CommandUtils.isInstalled("coffee")) {
+						CommandUtils.execCommand("sudo npm install -g coffee-script", true)
+					}
+				}
+
+				if (!CommandUtils.isInstalled("mongod")) {
+					log.warning("You should install mongodb, http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/")
+				}
+			}
+		}
+
 		if (SystemUtils.IS_OS_MAC_OSX) {
 			if (!CommandUtils.isInstalled("brew")) {
 				println """Please install homebrew by running:
@@ -53,6 +95,13 @@ Please install also Xcode's latest version."""
 			}
 		}
     }
+
+	def updateAptGet(update) {
+		if (update) {
+			CommandUtils.execCommand("sudo apt-get -y update")
+		}
+		performUpdate = false
+	}
 
     def updateBrew(update) {
         if (update) {

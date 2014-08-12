@@ -36,20 +36,23 @@ class CommandUtils {
 			proc = Runtime.getRuntime().exec(["bash","-c",command] as String[])
 		}
         def output = ""
+		def errOutput = ""
         proc.in.eachLine { line ->
             output += line
             if (verbose) {
                 println line
             }
         }
+
 		proc.err.eachLine { line ->
+			errOutput += line
 			println line
 		}
 		proc.waitFor()
         if (proc.exitValue() == 0) {
             return output
         } else {
-            return proc.err.text
+            return errOutput
         }
     }
 
