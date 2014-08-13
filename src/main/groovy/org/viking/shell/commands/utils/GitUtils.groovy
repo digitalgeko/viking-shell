@@ -31,6 +31,7 @@ class GitUtils {
 	def ensureCloneRepo() {
 		File gitRepoFile = getRepoFolder()
 		if (!new File(gitRepoFile, ".git").exists()) {
+			println "Cloning $gitRepo..."
 			def gitCloneRepo = Git.cloneRepository()
 			if (username && password) {
 				gitCloneRepo.setCredentialsProvider(getGitCredentials())
@@ -53,8 +54,10 @@ class GitUtils {
 				.findGitDir(getRepoFolder())
 				.build();
 
-
 		PullCommand pull = new PullCommand(repository)
+
+		println "Pulling from $gitRepo..."
+
 		if (username && password) {
 			pull.setCredentialsProvider(getGitCredentials())
 		}

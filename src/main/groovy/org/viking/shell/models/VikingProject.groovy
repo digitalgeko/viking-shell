@@ -29,4 +29,9 @@ class VikingProject {
 			return false
 		}
 	}
+
+	static isVikingPortletsProject(File file) {
+		def childrenNames = file.listFiles().collect {it.name}
+		childrenNames.containsAll(['viking', 'public', 'conf', 'build.gradle'])
+	}
 }

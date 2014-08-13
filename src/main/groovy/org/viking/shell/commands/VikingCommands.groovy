@@ -1,9 +1,11 @@
 package org.viking.shell.commands
 
+import jline.Completor
 import jline.ConsoleReader
 import org.apache.commons.exec.CommandLine
 import org.apache.commons.exec.DefaultExecutor
 import org.apache.commons.io.FileUtils
+import org.eclipse.jgit.api.errors.InvalidRemoteException
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.shell.core.CommandMarker
 import org.springframework.shell.core.annotation.CliAvailabilityIndicator
@@ -12,11 +14,14 @@ import org.springframework.shell.core.annotation.CliOption
 import org.springframework.shell.support.util.OsUtils
 import org.springframework.stereotype.Component
 import org.viking.shell.commands.utils.CommandUtils
+import org.viking.shell.commands.utils.GitUtils
 import org.viking.shell.commands.utils.InvalidURLException
 import org.viking.shell.commands.utils.LiferayVersionUtils
 import org.viking.shell.commands.utils.ReloadUtils
 import org.viking.shell.models.VikingProject
 
+import java.nio.channels.CompletionHandler
+import java.nio.file.Files
 import java.util.concurrent.Executor
 
 @Component
@@ -36,6 +41,8 @@ class VikingCommands implements CommandMarker {
 
 	Boolean isCreatingProject = false
 
+	def tailLogProc
+
 	VikingProject getActiveProject() {
 		return confReader.activeProject
 	}
@@ -49,16 +56,24 @@ class VikingCommands implements CommandMarker {
 	}
 
 	@CliCommand(value = "start", help = "Starts Liferay for the active project.")
-    def startLiferay() {
+    def startLiferay(@CliOption(
+			key = "skipLogs", specifiedDefaultValue = "true", unspecifiedDefaultValue = "false"
+	) String skipLogs) {
+
 		if (isOfflineCommandAvailable()) {
 			try {
 				if (activeProject) {
 					liferayManager("startScript")
 					if (!OsUtils.isWindows()) {
 						println "Starting Liferay... please be patient!"
-						Thread.sleep(2500)
-						new URL("http://localhost:"+activeProject.port).text
-						return "Something is listening in port $activeProject.port... might be your Liferay!"
+						if (skipLogs.toBoolean()) {
+							Thread.sleep(2500)
+							new URL("http://localhost:"+activeProject.port).text
+							return "Something is listening in port $activeProject.port... might be your Liferay!"
+						} else {
+							tailLog()
+						}
+
 					} else {
 						return "Liferay started"
 					}
@@ -77,10 +92,27 @@ class VikingCommands implements CommandMarker {
     def stopLiferay() {
         if (varCommands.get("activeProject", null) != "Undefined") {
             liferayManager("stopScript")
+			if (tailLogProc) {
+				tailLogProc.destroy()
+				tailLogProc = null
+			}
             return "Stopping Liferay..."
         }
         return "Please set an active project."
     }
+
+	@CliCommand(value = "pwd", help = "Shows project paths.")
+	def pwd() {
+		if (activeProject) {
+			println "Project path:\t\t$activeProject.path"
+			println "Portlets path:\t\t$activeProject.portletsPath"
+			println "Theme path:\t\t$activeProject.themePath"
+			println "Liferay path:\t\t$activeProject.liferayPath"
+			println "Tomcat path:\t\t$activeProject.tomcatPath"
+			return
+		}
+		return "Please set an active project."
+	}
 
     def liferayManager(status) {
         def scriptPath = varCommands.get(status, null)
@@ -100,11 +132,6 @@ class VikingCommands implements CommandMarker {
 			}
         }
     }
-
-	@CliCommand(value = "init-dev-conf", help = "Initializes the conf/dev.conf.")
-	def initDevConf() {
-
-	}
 
 	@CliCommand(value = "setup-project", help = "Setup project.")
 	def setupProject() {
@@ -247,7 +274,7 @@ class VikingCommands implements CommandMarker {
 	}
 
 	def projectNameIsValid(String name) {
-		name.matches("[a-zA-Z]+")
+		name && name.matches("[a-zA-Z]+")
 	}
 
     @CliCommand(value = "new-project", help = "Create a new Viking project.")
@@ -352,9 +379,25 @@ You may now proceed with the new project creation."""
         }
         //Read the new active project
         ConsoleReader cr = new ConsoleReader()
-        def projectId = (cr.readLine("Select new active project: ") as Integer) - 1
-        if(validProjectIds.contains(projectId)) {
-            def newProjectDirName = projectList[projectId].name
+		cr.addCompletor(new Completor() {
+			@Override
+			int complete(String s, int i, List list) {
+				list.addAll projectList.findAll{it.name.startsWith(s)}.collect {it.name - "-env"}
+				return 0
+			}
+		})
+        def projectChoice = cr.readLine("Select new active project: ")
+		def newProjectDir
+		if (projectChoice.isNumber()) {
+			def projectId = (projectChoice as Integer) - 1
+			if (validProjectIds.contains(projectId)) {
+				newProjectDir = projectList[projectId]
+			}
+		} else {
+			newProjectDir = projectList.find {it.name == "$projectChoice-env"}
+		}
+        if(newProjectDir) {
+			def newProjectDirName = newProjectDir.name
             varCommands.set("activeProject", newProjectDirName - "-env", null)
             varCommands.set("activeProjectDir", newProjectDirName, null)
             def startScript = CommandUtils.getStartScript(new File("${CommandUtils.homeDir}/${varCommands.get("projectsDir", null)}/$newProjectDirName"))
@@ -465,14 +508,22 @@ Port $activeProject.port is not responding..."""
 
     @CliCommand(value = "tail-log", help = "Show Liferay's log.")
     def tailLog() {
-		if (isOnlineCommandAvailable()) {
-			if (activeProject) {
-				CommandUtils.execCommand("tail -f \"${activeProject.tomcatPath}/logs/catalina.out\"", true)
+		if (activeProject) {
+			if (!tailLogProc) {
+				Thread.start {
+					def command = "tail -f \"${activeProject.tomcatPath}/logs/catalina.out\""
+					if (OsUtils.isWindows()) {
+						tailLogProc = Runtime.getRuntime().exec(["cmd.exe","/C",command] as String[])
+					} else {
+						tailLogProc = Runtime.getRuntime().exec(["bash","-c",command] as String[])
+					}
+					CommandUtils.handleInputStream(tailLogProc.in, true, false)
+				}
+			} else {
+				return "Tail already running"
 			}
-			return "Please set an active project."
-		} else {
-			return "Liferay is offline, this command can not be executed."
 		}
+		return "Please set an active project."
     }
 
 	@CliCommand(value = "update", help = "Updates templates located in ~/.viking-shell/templates.")
@@ -481,21 +532,84 @@ Port $activeProject.port is not responding..."""
 		confReader.updateTemplates()
 	}
 
+	@CliCommand(value = "install-project", help = "Updates templates located in ~/.viking-shell/templates.")
+	def installProject(@CliOption(
+			key = "gitRepository"
+	) String gitRepository) {
+		ConsoleReader cr = new ConsoleReader()
+
+		while(!gitRepository) {
+			gitRepository = cr.readLine("Git repository: ")
+		}
+
+		try {
+			def tempDir = Files.createTempDirectory("temp_viking_project_dir").toFile()
+			def gitUtils = new GitUtils()
+			gitUtils.localFolderPath = tempDir.path
+			gitUtils.gitRepo = gitRepository
+			gitUtils.pull()
+
+			def vikingPortletsProject = tempDir.listFiles().find {VikingProject.isVikingPortletsProject(it)}
+
+			if (vikingPortletsProject) {
+				def projectName = vikingPortletsProject.name - "-env"
+				def projectDir = new File("${CommandUtils.homeDir}/${varCommands.variables["projectsDir"]}/${projectName}-env")
+				if (!projectDir.exists()) {
+					tempDir.renameTo(projectDir)
+					varCommands.set("activeProject", projectName, null)
+					varCommands.set("activeProjectDir", projectDir.name, null)
+					setupProject()
+					return "Project $projectName successfully installed"
+				} else {
+					return "Project $projectName already exists, please delete the project to install it again. Existing project's path is: $projectDir.path"
+				}
+
+			} else {
+				return "No portlets project found in repository"
+			}
+
+		} catch (InvalidRemoteException e) {
+			return "Git repository is not valid."
+		} catch (e) {
+			e.printStackTrace()
+			return e.localizedMessage
+		}
+	}
+
 	@CliCommand(value = "restore-database", help = "Restore database.")
 	def restoreDatabase() {
 		if (isOfflineCommandAvailable()) {
 			if (activeProject) {
+				ConsoleReader cr = new ConsoleReader()
+
 				def sqlBackupFolder = new File("$activeProject.path/sql")
 				def sqlBackupFile = sqlBackupFolder.listFiles().first()
 				// TODO: use conf database connection
 				def user = varCommands.get("dbuser", "databaseConnection")
 				def pass = varCommands.get("dbpass", "databaseConnection")
+
+				def databaseExists
+				if (pass && pass != "Undefined") {
+					databaseExists = CommandUtils.execCommand("mysqlshow --user=$user --password=$pass", false, true).contains(activeProject.name)
+				} else {
+					databaseExists = CommandUtils.execCommand("mysqlshow --user=$user", false, true).contains(activeProject.name)
+				}
+
+				if (databaseExists) {
+					def restoreConfirmation = ""
+					while (restoreConfirmation != "restore $activeProject.name") {
+						restoreConfirmation = cr.readLine("Database $activeProject.name already exits, please type 'restore $activeProject.name' to remove the database contents continue with the restore process, or 'cancel' to keep the database as is: ")
+						if (restoreConfirmation == 'cancel') {
+							return "Operation cancelled."
+						}
+					}
+				}
+
 				if (pass && pass != "Undefined") {
 					CommandUtils.execCommand("mysql -u $user -p$pass < $sqlBackupFile.path")
 				} else {
 					CommandUtils.execCommand("mysql -u $user < $sqlBackupFile.path")
 				}
-
 				return "Backup restored"
 			}
 			return "Please set an active project."

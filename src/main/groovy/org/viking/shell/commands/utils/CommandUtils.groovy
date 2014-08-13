@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.shell.support.util.OsUtils
 import org.viking.shell.commands.ConfReader
 import org.zeroturnaround.zip.ZipUtil
+import org.apache.commons.io.IOUtils
 
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -20,14 +21,16 @@ class CommandUtils {
 
     def static isInstalled(pkg) {
         def command = "type -a $pkg"
-        def result = execCommand(command)
-        if (!result.contains("not found")) {
-            return true
-        }
-        return false
+        try {
+			execCommand(command, true, true)
+			return true
+		} catch (e) {
+			return false
+		}
+
     }
 
-    def static execCommand(String command, Boolean verbose = true) {
+    def static execCommand(String command, Boolean verbose = true, Boolean returnOutput = false) {
 //        def proc = command.execute()
         def proc
 		if (OsUtils.isWindows()) {
@@ -35,26 +38,38 @@ class CommandUtils {
 		} else {
 			proc = Runtime.getRuntime().exec(["bash","-c",command] as String[])
 		}
-        def output = ""
-		def errOutput = ""
-        proc.in.eachLine { line ->
-            output += line
-            if (verbose) {
-                println line
-            }
-        }
+        def output = handleInputStream(proc.in, verbose, returnOutput)
+		def errOutput = handleInputStream(proc.err, true, returnOutput)
 
-		proc.err.eachLine { line ->
-			errOutput += line
-			println line
-		}
 		proc.waitFor()
         if (proc.exitValue() == 0) {
             return output
         } else {
-            return errOutput
+            throw new Exception(errOutput)
         }
     }
+
+	static handleInputStream(inputStream, printOutput, returnOutput) {
+		BufferedReader br
+		def output = ""
+		try {
+			br = new BufferedReader(new InputStreamReader(inputStream))
+			String line
+			while ((line = br.readLine()) != null) {
+				if (printOutput) {
+					println(line);
+				}
+				if (returnOutput) {
+					output += line
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			IOUtils.closeQuietly(br)
+		}
+		return output
+	}
 
 	def static execCommand(List command, Boolean verbose = false) {
 		def proc = command.execute()
