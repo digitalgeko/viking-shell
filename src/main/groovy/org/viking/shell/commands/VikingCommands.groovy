@@ -39,8 +39,6 @@ class VikingCommands implements CommandMarker {
 	@Autowired
 	def ConfReader confReader
 
-	Boolean isCreatingProject = false
-
 	def tailLogProc
 
 	VikingProject getActiveProject() {
@@ -48,7 +46,7 @@ class VikingCommands implements CommandMarker {
 	}
 
 	public boolean isOnlineCommandAvailable() {
-		return isCreatingProject || activeProject.isRunning();
+		return activeProject.isRunning();
 	}
 
 	public boolean isOfflineCommandAvailable() {
@@ -226,7 +224,7 @@ class VikingCommands implements CommandMarker {
 					}
 
 					def sqlDir = new File("${projectDir}/sql")
-					println "sqlDir:$sqlDir"
+
 					if (!sqlDir.exists()) {
 						sqlDir.mkdirs()
 						CommandUtils.generate("templates/sql/${lrVersionKey}.sql", "${projectDir}/sql/${lrVersionKey}.sql", [
@@ -311,7 +309,7 @@ You may now proceed with the new project creation."""
 
 				}
 			}
-			isCreatingProject = true
+
 			//Ask for project name
 			def projectName = cr.readLine("project name: ").capitalize()
 
@@ -350,12 +348,9 @@ You may now proceed with the new project creation."""
 			setupProject()
 
 			restoreDatabase()
-			isCreatingProject = false
 			println "** Project ${projectName} was successfully created and is now the active project. **"
 		} catch (e) {
 			e.printStackTrace()
-		} finally {
-			isCreatingProject = false
 		}
     }
 
@@ -446,27 +441,23 @@ Port $activeProject.port is not responding..."""
     def deploy( @CliOption(
 			key = "target"
 	) String target) {
-		if (isOnlineCommandAvailable()) {
-			if (activeProject) {
-				if (target == "theme") {
-					new File(activeProject.path).listFiles().each {
-						if (it.name.endsWith("-theme")) {
-							CommandUtils.execCommand("mvn package -f \"${it.path}/pom.xml\"", true)
-							def warFile = new File("${it.path}/target").listFiles().find {it.name.endsWith(".war")}
-							deployWar(warFile.path)
-						}
+		if (activeProject) {
+			if (target == "theme") {
+				new File(activeProject.path).listFiles().each {
+					if (it.name.endsWith("-theme")) {
+						CommandUtils.execCommand("mvn package -f \"${it.path}/pom.xml\"", true)
+						def warFile = new File("${it.path}/target").listFiles().find {it.name.endsWith(".war")}
+						deployWar(warFile.path)
 					}
-				} else {
-					CommandUtils.executeGradle(activeProject.portletsPath, "war")
-					def warFile = new File("${activeProject.portletsPath}/build/libs").listFiles().find {it.name.endsWith(".war")}
-					deployWar(warFile.path)
 				}
-				return "$activeProject.name successfully deployed."
+			} else {
+				CommandUtils.executeGradle(activeProject.portletsPath, "war")
+				def warFile = new File("${activeProject.portletsPath}/build/libs").listFiles().find {it.name.endsWith(".war")}
+				deployWar(warFile.path)
 			}
-			return "Please set an active project."
-		} else {
-			return "Liferay is offline, this command can not be executed."
+			return "$activeProject.name successfully deployed."
 		}
+		return "Please set an active project."
     }
 
 	@CliCommand(value = "prod-war", help = "Build and deploy the active project")
@@ -621,72 +612,64 @@ Port $activeProject.port is not responding..."""
 
 	@CliCommand(value = "full-deploy", help = "Deploy the project and its dependencies.")
 	def fullDeploy() {
-		if (isOnlineCommandAvailable()) {
-			if (activeProject) {
-				println "Deploying project and its dependencies..."
-				deployDependencies()
-				deploy("portlets")
-				deploy("theme")
+		if (activeProject) {
+			println "Deploying project and its dependencies..."
+			deployDependencies()
+			deploy("portlets")
+			deploy("theme")
 
-				return "Successfully deployed the project and its dependencies"
-			}
-			return "Please set an active project."
-		} else {
-			return "Liferay is offline, this command can not be executed."
+			return "Successfully deployed the project and its dependencies"
 		}
+		return "Please set an active project."
 	}
 
 	@CliCommand(value = "dependencies-deploy", help = "Deploy the project's dependencies.")
 	def deployDependencies() {
-		if (isOnlineCommandAvailable()) {
-			if (activeProject) {
-				println "Deploying project's dependencies..."
+		if (activeProject) {
+			println "Deploying project's dependencies..."
 
-				def projectsDir = varCommands.get("projectsDir",null)
+			def projectsDir = varCommands.get("projectsDir",null)
 
-				try {
-					confReader.projectConf.dependencies.each { Map dependency ->
+			try {
+				confReader.projectConf.dependencies.each { Map dependency ->
 
-						switch (dependency.type) {
-							case "LOCAL_WAR":
-								if (!dependency.path.startsWith("/")) {
-									dependency.path = "$activeProject.path/$dependency.path"
-								}
-								deployWar(dependency.path)
-								break;
+					switch (dependency.type) {
+						case "LOCAL_WAR":
+							if (!dependency.path.startsWith("/")) {
+								dependency.path = "$activeProject.path/$dependency.path"
+							}
+							deployWar(dependency.path)
+							break;
 
-							case "URL":
-								def downloadsDir = "$activeProject.path"
-								def dependencyFile = new File(downloadsDir, "dependencies/$dependency.name")
-								if (!dependencyFile.exists()) {
-									CommandUtils.download(dependency.src, "dependencies", dependency.name, downloadsDir)
-								}
-								deployWar(dependencyFile.path)
-								break;
+						case "URL":
+							def downloadsDir = "$activeProject.path"
+							def dependencyFile = new File(downloadsDir, "dependencies/$dependency.name")
+							if (!dependencyFile.exists()) {
+								CommandUtils.download(dependency.src, "dependencies", dependency.name, downloadsDir)
+							}
+							deployWar(dependencyFile.path)
+							break;
 
-							case "LOCAL_PROJECT":
-								def dependencyPath = "${CommandUtils.homeDir}${File.separator}${projectsDir}${File.separator}${dependency.name}-env${File.separator}${dependency.name}"
-								if (!new File("${dependencyPath}/build/libs/${dependency.name}.war").exists()) {
-									CommandUtils.execCommand("gradle -p \"${dependencyPath}\" war", true)
-								}
-								deployWar("${dependencyPath}/build/libs/${dependency.name}.war")
-								break;
+						case "LOCAL_PROJECT":
+							def dependencyPath = "${CommandUtils.homeDir}${File.separator}${projectsDir}${File.separator}${dependency.name}-env${File.separator}${dependency.name}"
+							if (!new File("${dependencyPath}/build/libs/${dependency.name}.war").exists()) {
+								CommandUtils.execCommand("gradle -p \"${dependencyPath}\" war", true)
+							}
+							deployWar("${dependencyPath}/build/libs/${dependency.name}.war")
+							break;
 
-							default:
-								println "Dependency $dependency is not a supported type, please use 'LOCAL_WAR', 'URL' or 'LOCAL_PROJECT'"
-						}
-
+						default:
+							println "Dependency $dependency is not a supported type, please use 'LOCAL_WAR', 'URL' or 'LOCAL_PROJECT'"
 					}
-				} catch (e) {
-					e.printStackTrace()
-				}
 
-				return "Successfully deployed the project's dependencies"
+				}
+			} catch (e) {
+				e.printStackTrace()
 			}
-			return "Please set an active project."
-		} else {
-			return "Liferay is offline, this command can not be executed."
+
+			return "Successfully deployed the project's dependencies"
 		}
+		return "Please set an active project."
 	}
 }
 
