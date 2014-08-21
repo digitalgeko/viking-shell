@@ -71,9 +71,8 @@ class VikingCommands implements CommandMarker {
 						} else {
 							tailLog()
 						}
-
 					} else {
-						return "Liferay started"
+						return ""
 					}
 				}
 			} catch (e) {
@@ -131,6 +130,24 @@ class VikingCommands implements CommandMarker {
         }
     }
 
+	def requestLiferayVersion() {
+		ConsoleReader cr = new ConsoleReader()
+		def versionOptions = 1..varCommands.variables["liferayVersions"].size()
+		def liferayVersion = ""
+		while (versionOptions.contains(liferayVersion)) {
+			println "The following Liferay versions are available:"
+			println varCommands.list("liferayVersions")
+
+			liferayVersion = cr.readLine("liferay version: ") as Integer
+
+			if (!versionOptions.contains(liferayVersion)) {
+				println "Invalid Liferay version."
+
+			}
+		}
+		return varCommands.variables["liferayVersions"].keySet()[liferayVersion -1]
+	}
+
 	@CliCommand(value = "setup-project", help = "Setup project.")
 	def setupProject() {
 		
@@ -142,17 +159,11 @@ class VikingCommands implements CommandMarker {
 
 			def templatesDir = new File("$CommandUtils.homeDir${File.separator}.viking-shell${File.separator}templates")
 
-			if (!new File(activeProject.liferayPath).exists()) {
-				println "The following Liferay versions are available:"
-				println varCommands.list("liferayVersions")
+			def lrVersionKey
 
-				def liferayVersion = cr.readLine("liferay version: ") as Integer
-				def versionOptions = 1..varCommands.variables["liferayVersions"].size()
-				if (!versionOptions.contains(liferayVersion)) {
-					println "Invalid Liferay version."
-					return
-				}
-				def lrVersionKey = varCommands.variables["liferayVersions"].keySet()[liferayVersion -1]
+			if (!new File(activeProject.liferayPath).exists()) {
+
+				lrVersionKey = requestLiferayVersion()
 
 				//Check if all the dependencies are met ???
 				//Download liferay if needed
@@ -231,17 +242,6 @@ class VikingCommands implements CommandMarker {
 								projectName: projectName
 						])
 					}
-
-					def themeOutputDir = "${projectDir}${File.separator}${projectName}-theme"
-					if (!new File(themeOutputDir).exists()) {
-						// Create theme
-						def themeInputDir = "$templatesDir.path${File.separator}themes${File.separator}${lrVersionKey}"
-						CommandUtils.generateDir(themeInputDir, themeOutputDir, [
-								"projectName": projectName,
-								"liferayVersion": LiferayVersionUtils.getLiferayThemeVersion(lrVersionKey),
-								"webappsProjectDir": "${CommandUtils.getTomcatPath(projectDir)}/webapps/${projectName}-theme",
-						])
-					}
 				} catch (e) {
 					e.printStackTrace()
 					return
@@ -250,6 +250,20 @@ class VikingCommands implements CommandMarker {
 			}
 
 			try {
+				def themeOutputDir = "${projectDir}${File.separator}${projectName}-theme"
+				if (!new File(themeOutputDir).exists()) {
+					if (!lrVersionKey) {
+						lrVersionKey = requestLiferayVersion()
+					}
+					// Create theme
+					def themeInputDir = "$templatesDir.path${File.separator}themes${File.separator}${lrVersionKey}"
+					CommandUtils.generateDir(themeInputDir, themeOutputDir, [
+							"projectName": projectName,
+							"liferayVersion": LiferayVersionUtils.getLiferayThemeVersion(lrVersionKey),
+							"webappsProjectDir": "${CommandUtils.getTomcatPath(projectDir)}/webapps/${projectName}-theme",
+					])
+				}
+
 				if (!new File("${projectDir}/.gitignore").exists()) {
 					CommandUtils.generate("templates/baseConf/gitignore_template", "${projectDir}/.gitignore", [
 							"projectName": projectName
@@ -275,7 +289,24 @@ class VikingCommands implements CommandMarker {
 		name && name.matches("[a-zA-Z]+")
 	}
 
-    @CliCommand(value = "new-project", help = "Create a new Viking project.")
+	@CliCommand(value = "init-dev-conf", help = "Initializes dev.conf file.")
+	def initDevConf() {
+		if (activeProject) {
+			def devConfFile = new File("$activeProject.portletsPath/conf/dev.conf")
+			if (!devConfFile.exists()) {
+				CommandUtils.generate("templates/baseConf/.templates/conf/dev.conf", devConfFile.path, [
+						projectDir: new File(activeProject.portletsPath)
+				])
+				return "dev.conf initialized at ${devConfFile.path}"
+			} else {
+				return "dev.conf file already exists"
+			}
+
+		}
+		return "Please set an active project."
+	}
+
+	@CliCommand(value = "new-project", help = "Create a new Viking project.")
     def newProject() {
 		try {
 			ConsoleReader cr = new ConsoleReader()
