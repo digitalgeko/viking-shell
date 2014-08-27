@@ -153,14 +153,48 @@ class CommandUtils {
         return script
     }
 
-    def static generate(source, dest, bindingData, useDefaultDir = true) {
-        def content = useDefaultDir ? new File("$homeDir${File.separator}.viking-shell", source) : new File(source)
-        def engine = new StreamingTemplateEngine()
-        def output = new File(dest)
-		if (output.exists()) {
-			output.delete()
+	static boolean isTextFile(String filePath) throws Exception {
+		File f = new File(filePath);
+		if(!f.exists())
+			return false;
+		FileInputStream is = new FileInputStream(f);
+		int size = is.available();
+		if(size > 1000)
+			size = 1000;
+		byte[] data = new byte[size];
+		is.read(data);
+		is.close();
+		String s = new String(data, "ISO-8859-1");
+		String s2 = s.replaceAll(
+				"[a-zA-Z0-9ßöäü\\.\\*!\"§\\\$\\%&/()=\\?@~'#:,;\\"+
+						"+><\\|\\[\\]\\{\\}\\^°²³\\\\ \\n\\r\\t_\\-`´âêîô"+
+						"ÂÊÔÎáéíóàèìòÁÉÍÓÀÈÌÒ©‰¢£¥€±¿»«¼½¾™ª]", "");
+		// will delete all text signs
+
+		double d = (double)(s.length() - s2.length()) / (double)(s.length());
+		// percentage of text signs in the text
+
+		return d > 0.95;
+	}
+
+
+	def static generate(source, dest, bindingData, useDefaultDir = true) {
+		def content = useDefaultDir ? new File("$homeDir${File.separator}.viking-shell", source) : new File(source)
+		def output = new File(dest)
+
+		if (isTextFile(content.path)) {
+			try {
+				def engine = new StreamingTemplateEngine()
+				if (output.exists()) {
+					output.delete()
+				}
+				output.write(engine.createTemplate(new BufferedReader(new FileReader(content))).make(bindingData).toString())
+			} catch (e) {
+				FileUtils.copyFile(content, output)
+			}
+		} else {
+			FileUtils.copyFile(content, output)
 		}
-        output.write(engine.createTemplate(content).make(bindingData).toString())
     }
 
 	def static generateDir(inputDir, outputDir, bindingData) {

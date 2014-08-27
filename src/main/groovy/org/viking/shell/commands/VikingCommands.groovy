@@ -70,6 +70,7 @@ class VikingCommands implements CommandMarker {
 							return "Something is listening in port $activeProject.port... might be your Liferay!"
 						} else {
 							tailLog()
+							return ""
 						}
 					} else {
 						return ""
@@ -130,22 +131,32 @@ class VikingCommands implements CommandMarker {
         }
     }
 
-	def requestLiferayVersion() {
+	def requestOption (options, message, promptMessage, errorMessage) {
 		ConsoleReader cr = new ConsoleReader()
-		def versionOptions = 1..varCommands.variables["liferayVersions"].size()
-		def liferayVersion = ""
-		while (versionOptions.contains(liferayVersion)) {
-			println "The following Liferay versions are available:"
-			println varCommands.list("liferayVersions")
+		def indexOptions = 1..options.size()
+		def index = -1
+		while (!indexOptions.contains(index)) {
+			println message
+			options.eachWithIndex { item, int i ->
+				println "(${i+1}) $item"
+			}
+			try {
+				index = cr.readLine(promptMessage).toInteger()
+			} catch (e) {
+				index = -1
+			}
 
-			liferayVersion = cr.readLine("liferay version: ") as Integer
-
-			if (!versionOptions.contains(liferayVersion)) {
-				println "Invalid Liferay version."
-
+			if (!indexOptions.contains(index)) {
+				println errorMessage
 			}
 		}
-		return varCommands.variables["liferayVersions"].keySet()[liferayVersion -1]
+		index-1
+	}
+
+	def requestLiferayVersion() {
+		def versions = varCommands.variables["liferayVersions"]
+		def liferayVersion = requestOption(versions, "The following Liferay versions are available:", "liferay version: ", "Invalid Liferay version.")
+		return versions.keySet()[liferayVersion]
 	}
 
 	@CliCommand(value = "setup-project", help = "Setup project.")
@@ -234,14 +245,6 @@ class VikingCommands implements CommandMarker {
 						varCommands.set("stopScript", stopScript, null)
 					}
 
-					def sqlDir = new File("${projectDir}/sql")
-
-					if (!sqlDir.exists()) {
-						sqlDir.mkdirs()
-						CommandUtils.generate("templates/sql/${lrVersionKey}.sql", "${projectDir}/sql/${lrVersionKey}.sql", [
-								projectName: projectName
-						])
-					}
 				} catch (e) {
 					e.printStackTrace()
 					return
@@ -250,6 +253,19 @@ class VikingCommands implements CommandMarker {
 			}
 
 			try {
+				def backupsDir = new File("${projectDir}/backups")
+
+				if (!backupsDir.exists()) {
+					if (!lrVersionKey) {
+						lrVersionKey = requestLiferayVersion()
+					}
+					backupsDir.mkdirs()
+
+					CommandUtils.generateDir(new File("$CommandUtils.homeDir${File.separator}.viking-shell", "templates/backups/${lrVersionKey}").path, "${projectDir}/backups/${lrVersionKey}", [
+							projectName: projectName
+					])
+				}
+
 				def themeOutputDir = "${projectDir}${File.separator}${projectName}-theme"
 				if (!new File(themeOutputDir).exists()) {
 					if (!lrVersionKey) {
@@ -377,8 +393,6 @@ You may now proceed with the new project creation."""
 			varCommands.set("activeProjectDir", projectDir.name, null)
 
 			setupProject()
-
-			restoreDatabase()
 			println "** Project ${projectName} was successfully created and is now the active project. **"
 		} catch (e) {
 			e.printStackTrace()
@@ -604,8 +618,18 @@ Port $activeProject.port is not responding..."""
 			if (activeProject) {
 				ConsoleReader cr = new ConsoleReader()
 
-				def sqlBackupFolder = new File("$activeProject.path/sql")
-				def sqlBackupFile = sqlBackupFolder.listFiles().first()
+				def backupsFolder = new File("$activeProject.path/backups")
+				def backupDirs = backupsFolder.listFiles().findAll{!it.name.startsWith(".")}
+				File backupDir
+				if (backupDirs.size() == 1) {
+					backupDir = backupDirs.first()
+				} else {
+					def backupDirIndex = requestOption(backupDirs.collect{it.name}, "The following backups are available:", "backup index: ", "Invalid backup.")
+					backupDir = backupDirs[backupDirIndex]
+				}
+				def sqlBackupFile = new File(backupDir, "backup.sql")
+				def dataDirectory = new File(backupDir, "data")
+				def destDataDirectory = new File(activeProject.liferayPath, "data")
 				// TODO: use conf database connection
 				def user = varCommands.get("dbuser", "databaseConnection")
 				def pass = varCommands.get("dbpass", "databaseConnection")
@@ -632,6 +656,13 @@ Port $activeProject.port is not responding..."""
 				} else {
 					CommandUtils.execCommand("mysql -u $user < $sqlBackupFile.path")
 				}
+
+				if (destDataDirectory.exists()) {
+					FileUtils.deleteDirectory(destDataDirectory)
+				}
+				FileUtils.copyDirectoryToDirectory(dataDirectory, new File(activeProject.liferayPath))
+
+
 				return "Backup restored"
 			}
 			return "Please set an active project."
