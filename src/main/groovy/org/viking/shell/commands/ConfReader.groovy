@@ -63,7 +63,7 @@ class ConfReader {
 		def gitUtils = new GitUtils()
 		gitUtils.localFolderPath = templatesDir.path
 		gitUtils.gitRepo = varCommands.get("templatesRepo", "")
-		if (gitUtils.gitRepo == "Undefined") {
+		if (gitUtils.gitRepo == null) {
 			gitUtils.gitRepo = "https://github.com/digitalgeko/viking-shell-templates.git"
 		}
 		gitUtils.pull()
@@ -77,7 +77,7 @@ class ConfReader {
 	def getActiveProject () {
 
 		def activeProject = varCommands.get("activeProject", null)
-		if (activeProject != "Undefined") {
+		if (activeProject) {
 			def projectDir = varCommands.get("activeProjectDir", null)
 			def projectName = varCommands.get("activeProject", null)
 			def projectsDir = varCommands.get("projectsDir",null)

@@ -4,6 +4,7 @@ import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
 import org.springframework.shell.plugin.support.DefaultBannerProvider
 import org.springframework.stereotype.Component
+import org.viking.shell.commands.utils.VersionUtils
 
 
 @Component
@@ -12,7 +13,8 @@ class VikingBannerProvider extends DefaultBannerProvider {
 
     @Override
     def String getBanner() {
-         """
+		def txt =
+				"""
 dk           dk  dk  dk         dk
 `dk         dk'  ""  dk         ""
  `dk       dk'       dk
@@ -23,12 +25,34 @@ dk           dk  dk  dk         dk
       `V'        dk  dk   `dka  dk  dk       dk   `"YbbdP"Y8
                                                   aa,    ,dk
                                                    "Y8bbdP"
+
+------------------------------------------------------------
+Viking shell $version
+------------------------------------------------------------
          """
+
+
+		if (!VersionUtils.hasLatestVersion) {
+			txt +=
+					"""
+Viking shell ${VersionUtils.latestVersion} is out!
+
+To install the latest version of viking-shell, execute:
+install-shell --version latest
+
+or install it manually:
+https://github.com/digitalgeko/viking-shell/releases/latest
+
+------------------------------------------------------------
+"""
+		}
+
+		txt
     }
 
     @Override
     def String getVersion() {
-        "0.1"
+		VersionUtils.currentVersion
     }
 
     @Override

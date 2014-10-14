@@ -6,9 +6,9 @@ import org.apache.commons.exec.CommandLine
 import org.apache.commons.exec.DefaultExecutor
 import org.apache.commons.io.FileUtils
 import org.eclipse.jgit.api.errors.InvalidRemoteException
+import org.fusesource.jansi.Ansi
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.shell.core.CommandMarker
-import org.springframework.shell.core.annotation.CliAvailabilityIndicator
 import org.springframework.shell.core.annotation.CliCommand
 import org.springframework.shell.core.annotation.CliOption
 import org.springframework.shell.support.util.OsUtils
@@ -18,11 +18,11 @@ import org.viking.shell.commands.utils.GitUtils
 import org.viking.shell.commands.utils.InvalidURLException
 import org.viking.shell.commands.utils.LiferayVersionUtils
 import org.viking.shell.commands.utils.ReloadUtils
+import org.viking.shell.commands.utils.VersionUtils
+
 import org.viking.shell.models.VikingProject
 
-import java.nio.channels.CompletionHandler
 import java.nio.file.Files
-import java.util.concurrent.Executor
 
 @Component
 class VikingCommands implements CommandMarker {
@@ -30,7 +30,7 @@ class VikingCommands implements CommandMarker {
     public static final TEMPLATES_ROOT = "templates/themes/"
     public static final AVAILABLE_VERSIONS = [
             "6.1": "6.1.2",
-            "6.2": "6.2.0-RC5"
+            "6.2": "6.2.1"
     ]
 
     @Autowired
@@ -88,7 +88,7 @@ class VikingCommands implements CommandMarker {
 
     @CliCommand(value = "stop", help = "Stops Liferay for the active project.")
     def stopLiferay() {
-        if (varCommands.get("activeProject", null) != "Undefined") {
+        if (varCommands.get("activeProject", null)) {
             liferayManager("stopScript")
 			if (tailLogProc) {
 				tailLogProc.destroy()
@@ -203,7 +203,7 @@ class VikingCommands implements CommandMarker {
 					if (!deployFile.exists()) deployFile.mkdirs()
 
 					def dbpass = varCommands.get("dbpass", "databaseConnection")
-					if (!dbpass || dbpass == "Undefined") {
+					if (!dbpass || dbpass == null) {
 						dbpass = ""
 					}
 
@@ -343,7 +343,7 @@ class VikingCommands implements CommandMarker {
 				def shouldStopLiferay = cr.readLine("Do you want to stop it? (y/n) ")
 				switch (shouldStopLiferay) {
 					case ["y", "yes", "Y", "Yes", "YES"]:
-						if (varCommands.get("activeProject", null) == "Undefined") {
+						if (varCommands.get("activeProject", null) == null) {
 							println "Please set an active project."
 							return
 						}
@@ -392,6 +392,7 @@ You may now proceed with the new project creation."""
 			varCommands.set("activeProject", projectName, null)
 			varCommands.set("activeProjectDir", projectDir.name, null)
 
+			addPortlet(projectName)
 			setupProject()
 			println "** Project ${projectName} was successfully created and is now the active project. **"
 		} catch (e) {
@@ -515,15 +516,129 @@ Port $activeProject.port is not responding..."""
 		return "Please set an active project."
 	}
 
+
+	@CliCommand(value = "clean", help = "Cleans build folders, and tomcat webapps, temp and work if specified")
+	def clean(
+			@CliOption(key = "portletsBuild",	specifiedDefaultValue = "true", unspecifiedDefaultValue = "false") String portletsBuild,
+			@CliOption(key = "themeBuild",	specifiedDefaultValue = "true", unspecifiedDefaultValue = "false") String themeBuild,
+			@CliOption(key = "portletsWebapp",	specifiedDefaultValue = "true", unspecifiedDefaultValue = "false") String portletsWebapp,
+			@CliOption(key = "themeWebapp",	specifiedDefaultValue = "true", unspecifiedDefaultValue = "false") String themeWebapp,
+			@CliOption(key = "tomcatTempAndWork",	specifiedDefaultValue = "true", unspecifiedDefaultValue = "false") String tomcatTempAndWork,
+			@CliOption(key = "everything",	specifiedDefaultValue = "true", unspecifiedDefaultValue = "false") String everything
+		) {
+		if (activeProject) {
+
+			boolean cleanEverything = everything != "false"
+
+			if (portletsBuild != "false" || cleanEverything) {
+				CommandUtils.executeGradle(activeProject.portletsPath, "clean")
+			}
+
+			if (themeBuild != "false" || cleanEverything) {
+				CommandUtils.execCommand("mvn clean -f \"${activeProject.themePath}/pom.xml\"", true)
+			}
+
+			if (portletsWebapp != "false" || cleanEverything) {
+				FileUtils.deleteQuietly(new File(activeProject.tomcatPath, "webapps/${activeProject.name}"))
+				println "webapps/${activeProject.name} deleted"
+			}
+
+			if (themeWebapp != "false" || cleanEverything) {
+				FileUtils.deleteQuietly(new File(activeProject.tomcatPath, "webapps/${activeProject.name}-theme"))
+				println "webapps/${activeProject.name}-theme deleted"
+			}
+
+			if (tomcatTempAndWork != "false" || cleanEverything) {
+				if (isOfflineCommandAvailable()) {
+					new File(activeProject.tomcatPath, "temp").listFiles().each { FileUtils.deleteQuietly(it) }
+					println "tomcat temp dir deleted"
+					new File(activeProject.tomcatPath, "work").listFiles().each { FileUtils.deleteQuietly(it) }
+					println "tomcat work dir deleted"
+				} else {
+					println "** Tomcat temp and work can not be deleted because liferay is running"
+				}
+			}
+
+			if (portletsBuild == 'false' && themeBuild == 'false' && portletsWebapp == 'false' && themeWebapp == 'false' && tomcatTempAndWork == 'false' && everything == 'false') {
+				println "You need to define at least one clean target (i.e. 'clean --portletBuild' or 'clean --portletBuild --themeBuild'), please run 'help clean' for more details"
+			}
+			return ""
+		}
+		return "Please set an active project."
+
+	}
+
+	@CliCommand(value = "install-shell", help = "Installs the version specified of viking-shell")
+	def installShell(@CliOption(
+			key = "version",
+			mandatory = true
+	) String version) {
+		String installationDir = varCommands.get("viking-installation-dir", null)
+		if (installationDir) {
+			if (version == "latest") {
+				version = VersionUtils.latestVersion
+			}
+			def versionZipURL = "https://github.com/digitalgeko/viking-shell/releases/download/viking-shell-$version/viking-shell.zip"
+			try {
+				CommandUtils.download(versionZipURL, ".", "viking-shell-${version}.zip", installationDir)
+			} catch (e) {
+				println "Version '$version' is not valid."
+				return
+			}
+
+			def zipFile = new File(installationDir, "viking-shell.zip")
+			CommandUtils.unzip(zipFile.path, installationDir)
+			zipFile.delete()
+			if (CommandUtils.execCommand("viking-shell version", false, true).toString().contains(version)) {
+				println "Viking shell successfully updated to the latest version."
+				println "Please start viking-shell again."
+				System.exit(0)
+			} else {
+				println """
+Viking shell is still not at the latest version, Are you sure you have your 'viking-installation-dir' correctly set? viking-installation-dir: $installationDir
+If this directory is not correct please change it in your ~/.viking-shell/conf/init.conf, or install viking-shell manually:
+https://github.com/digitalgeko/viking-shell/releases/latest
+"""
+			}
+		} else {
+			println """
+Please edit your ~/.viking-shell/conf/init.conf and set a variable 'viking-installation-dir' where you have installed viking-shell, for example:
+var set --name viking-installation-dir --value "/opt/viking-shell"
+"""
+		}
+
+	}
+
 	@CliCommand(value = "add-portlet", help = "Adds a portlet to the active project")
 	def addPortlet( @CliOption(
 			key = "name"
-	) String name) {
+	) String portletName) {
 		
 		if (activeProject) {
-			name = name.capitalize()
-			CommandUtils.executeGradle(activeProject.portletsPath, "add --portletName=$name")
-			return "$name portlet added."
+			try {
+				portletName = portletName.capitalize()
+				println "Adding new portlet: ${portletName}"
+
+				def controllerFile = new File("$activeProject.portletsPath/viking/controllers/${portletName}Portlet.groovy")
+
+				def viewsFolder = new File("$activeProject.portletsPath/viking/views/${portletName}Portlet")
+				if (!viewsFolder.exists()) {
+					viewsFolder.mkdirs()
+				}
+
+				CommandUtils.generate("templates/baseConf/.templates/classes/controllers/Portlet.groovy", controllerFile.path, [
+						portletName: portletName
+				])
+
+				CommandUtils.generateDir("templates/baseConf/.templates/views/Portlet", viewsFolder.path, [
+						portletName: portletName
+				], true)
+			} catch (e) {
+				e.printStackTrace()
+			}
+
+
+			return "$portletName portlet added."
 		}
 		return "Please set an active project."
 	}
@@ -555,18 +670,13 @@ Port $activeProject.port is not responding..."""
 					}
 					CommandUtils.handleInputStream(tailLogProc.in, true, false)
 				}
+				return "Tailing liferay logs..."
 			} else {
 				return "Tail already running"
 			}
 		}
 		return "Please set an active project."
     }
-
-	@CliCommand(value = "update", help = "Updates templates located in ~/.viking-shell/templates.")
-	def update() {
-		println "Updating templates..."
-		confReader.updateTemplates()
-	}
 
 	@CliCommand(value = "install-project", help = "Updates templates located in ~/.viking-shell/templates.")
 	def installProject(@CliOption(
@@ -621,21 +731,16 @@ Port $activeProject.port is not responding..."""
 				def backupsFolder = new File("$activeProject.path/backups")
 				def backupDirs = backupsFolder.listFiles().findAll{!it.name.startsWith(".")}
 				File backupDir
-				if (backupDirs.size() == 1) {
-					backupDir = backupDirs.first()
-				} else {
-					def backupDirIndex = requestOption(backupDirs.collect{it.name}, "The following backups are available:", "backup index: ", "Invalid backup.")
-					backupDir = backupDirs[backupDirIndex]
-				}
-				def sqlBackupFile = new File(backupDir, "backup.sql")
-				def dataDirectory = new File(backupDir, "data")
-				def destDataDirectory = new File(activeProject.liferayPath, "data")
+				def options = backupDirs.collect{it.name} + 'No backup (Just drop and create database)'
+				def backupDirIndex = requestOption(options, "The following backups are available:", "backup index: ", "Invalid backup.")
+				backupDir = backupDirIndex < backupDirs.size() ? backupDirs[backupDirIndex] : null
+
 				// TODO: use conf database connection
 				def user = varCommands.get("dbuser", "databaseConnection")
 				def pass = varCommands.get("dbpass", "databaseConnection")
 
 				def databaseExists
-				if (pass && pass != "Undefined") {
+				if (pass) {
 					databaseExists = CommandUtils.execCommand("mysqlshow --user=$user --password=$pass", false, true).contains(activeProject.name)
 				} else {
 					databaseExists = CommandUtils.execCommand("mysqlshow --user=$user", false, true).contains(activeProject.name)
@@ -651,19 +756,30 @@ Port $activeProject.port is not responding..."""
 					}
 				}
 
-				if (pass && pass != "Undefined") {
-					CommandUtils.execCommand("mysql -u $user -p$pass < $sqlBackupFile.path")
+				if (backupDir) {
+					def sqlBackupFile = new File(backupDir, "backup.sql")
+					def dataDirectory = new File(backupDir, "data")
+					def destDataDirectory = new File(activeProject.liferayPath, "data")
+
+					if (pass) {
+						CommandUtils.execCommand("mysql -u $user -p$pass < $sqlBackupFile.path")
+					} else {
+						CommandUtils.execCommand("mysql -u $user < $sqlBackupFile.path")
+					}
+
+					if (destDataDirectory.exists()) {
+						FileUtils.deleteDirectory(destDataDirectory)
+					}
+					FileUtils.copyDirectoryToDirectory(dataDirectory, new File(activeProject.liferayPath))
+					return "Backup restored"
 				} else {
-					CommandUtils.execCommand("mysql -u $user < $sqlBackupFile.path")
+					if (pass) {
+						CommandUtils.execCommand("mysql -u $user -p$pass -e \"DROP DATABASE IF EXISTS $activeProject.name; CREATE DATABASE $activeProject.name;\"")
+					} else {
+						CommandUtils.execCommand("mysql -u $user -e \"DROP DATABASE IF EXISTS $activeProject.name; CREATE DATABASE $activeProject.name;\"")
+					}
+					return "No backup selected. Database erased, please start liferay to populate with default data."
 				}
-
-				if (destDataDirectory.exists()) {
-					FileUtils.deleteDirectory(destDataDirectory)
-				}
-				FileUtils.copyDirectoryToDirectory(dataDirectory, new File(activeProject.liferayPath))
-
-
-				return "Backup restored"
 			}
 			return "Please set an active project."
 		} else {

@@ -22,7 +22,7 @@ class CommandUtils {
     def static isInstalled(pkg) {
         def command = "type -a $pkg"
         try {
-			execCommand(command, true, true)
+			execCommand(command, false, true)
 			return true
 		} catch (e) {
 			return false
@@ -197,16 +197,20 @@ class CommandUtils {
 		}
     }
 
-	def static generateDir(inputDir, outputDir, bindingData) {
-		new File(inputDir).eachFileRecurse {
+	def static generateDir(inputDirPath, outputDirPath, bindingData, useDefaultDir = false) {
+		if (useDefaultDir) {
+			inputDirPath = new File("$homeDir${File.separator}.viking-shell", inputDirPath).path
+		}
+
+		new File(inputDirPath).eachFileRecurse {
 			if (!it.isDirectory()) {
 				try {
-					def filePath = it.path - inputDir
-					def outputFile =  new File("${outputDir}${filePath}")
+					def filePath = it.path - inputDirPath
+					def outputFile =  new File("${outputDirPath}${filePath}")
 					if (!outputFile.exists()) {
 						outputFile.parentFile.mkdirs()
 					}
-					generate(inputDir+filePath, outputFile.path, bindingData, false)
+					generate(inputDirPath+filePath, outputFile.path, bindingData, false)
 				} catch (e) {
 					e.printStackTrace()
 				}
@@ -214,7 +218,7 @@ class CommandUtils {
 		}
 	}
 
-    def static download(url, dest="", fileName = null, downloadsDir = null) {
+    def static download(url, dest="", fileName = null, downloadsDir = null, Boolean cacheFile = true) {
 		if (downloadsDir == null) {
 			downloadsDir = "$homeDir/.viking-shell/downloads"
 		}
@@ -240,19 +244,31 @@ class CommandUtils {
 		if (!cachedFile.parentFile.exists()) {
 			cachedFile.parentFile.mkdirs()
 		}
+
+		if (destFile.exists()) {
+			def headers = new URL(url).openConnection().headerFields
+			def contentLength = new Long(headers.get("Content-Length").first())
+			if (destFile.length() != contentLength) {
+				destFile.delete()
+			}
+		}
+
 		if (!destFile.exists()) {
 			if (cachedFile.exists()) {
 				Files.copy(cachedFile.toPath(), destFile.toPath())
 			} else {
 				println "Downloading $url"
+				def downloadURL = new URL(url)
 				// Verify that the url is correct
-				if (!new URL(url).openConnection().responseCode == "200") {
+				if (!downloadURL.openConnection().responseCode == "200") {
 					throw new InvalidURLException()
 				}
 				def output = new BufferedOutputStream(new FileOutputStream(destFile))
-				output << new URL(url).openStream()
+				output << downloadURL.openStream()
 				output.close()
-				Files.copy(destFile.toPath(), cachedFile.toPath())
+				if (cacheFile) {
+					Files.copy(destFile.toPath(), cachedFile.toPath())
+				}
 			}
 		}
     }

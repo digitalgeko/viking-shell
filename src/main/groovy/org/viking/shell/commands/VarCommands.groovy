@@ -66,7 +66,7 @@ class VarCommands implements CommandMarker {
         if (context) {
             value =  variables[context][name]
         }
-        return value ?: "Undefined"
+        return value
     }
 
     @CliCommand(value = "var show", help = "List the variables defined in a context.")

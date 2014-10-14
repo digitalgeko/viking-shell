@@ -18,6 +18,8 @@ class GitUtils {
 	String username
 	String password
 
+	String branch = "master"
+
 	def getRepoFolder() {
 		def file = new File(localFolderPath)
 		if (!file.exists()) file.mkdirs()
@@ -40,7 +42,7 @@ class GitUtils {
 			gitCloneRepo
 					.setURI(gitRepo)
 					.setDirectory(gitRepoFile)
-					.setBare(false).setBranch("master")
+					.setBare(false).setBranch(branch)
 					.call()
 		}
 	}

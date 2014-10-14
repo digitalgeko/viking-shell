@@ -10,7 +10,7 @@ apply plugin: 'application'
 
 def groupId = 'org.vikingportlets'
 def artifactId = "viking-shell"
-def versionNumber = '0.1.1'
+def versionNumber = '0.1.6'
 
 group = groupId
 version = versionNumber
@@ -46,7 +46,16 @@ dependencies {
 
 mainClassName = "org.viking.shell.Main"
 
-defaultTasks 'installApp'
+defaultTasks 'updateProjectInfo,installApp'
+
+task updateProjectInfo {
+	def projectInfoFile = new File(projectDir, "src/main/resources/project-info.conf")
+
+	projectInfoFile.text = """
+version = '$versionNumber'
+"""
+
+}
 
 run {
     standardInput = System.in

@@ -9,35 +9,29 @@ import org.viking.shell.commands.CheckDependencies
 import org.viking.shell.commands.ConfReader
 import org.viking.shell.commands.VarCommands
 
+import java.util.logging.Logger
+
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 class VikingPromptProvider  extends DefaultPromptProvider {
 
-    @Autowired
-    def ConfReader confReader
-
-    @Autowired
-    def CheckDependencies checkDeps
-
 	@Autowired
 	VarCommands varCommands
 
-    def readConf = true
+	@Autowired
+	InitManager initManager
 
-    def mustCheckDependencies = true
-
+	def mustInit = true
 
     def String getPrompt() {
-        if (mustCheckDependencies) {
-            checkDeps.check()
-            mustCheckDependencies = false
-        }
-        if (readConf) {
-            confReader.readConf()
-            readConf = false
-        }
+
+		if (mustInit) {
+			initManager.init()
+			mustInit = false
+		}
+
 		def activeProject = varCommands.get("activeProject", null)
-		activeProject != "Undefined" ? "$activeProject> " : "viking> "
+		activeProject ? "$activeProject> " : "viking> "
     }
 
     def String getProviderName() {
