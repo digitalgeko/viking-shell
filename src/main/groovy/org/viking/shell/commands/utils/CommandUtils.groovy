@@ -57,7 +57,7 @@ class CommandUtils {
 			String line
 			while ((line = br.readLine()) != null) {
 				if (printOutput) {
-					println(line);
+					println(line)
 				}
 				if (returnOutput) {
 					output += line

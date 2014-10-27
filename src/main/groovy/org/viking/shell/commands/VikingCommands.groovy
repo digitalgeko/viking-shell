@@ -480,6 +480,10 @@ Port $activeProject.port is not responding..."""
 		def warName = warFile.name
 		def tmpdir = System.getProperty("java.io.tmpdir")
 		FileUtils.copyFileToDirectory(warFile, new File(tmpdir))
+		def destFile = new File("${activeProject.liferayPath}/deploy", warName)
+		if (destFile.exists()) {
+			destFile.delete()
+		}
 		FileUtils.moveFileToDirectory(new File("$tmpdir/$warName"), new File("${activeProject.liferayPath}/deploy"), true)
 	}
 
@@ -498,7 +502,7 @@ Port $activeProject.port is not responding..."""
 				}
 			} else {
 				CommandUtils.executeGradle(activeProject.portletsPath, "war")
-				def warFile = new File("${activeProject.portletsPath}/build/libs").listFiles().find {it.name.endsWith(".war")}
+				def warFile = new File("${activeProject.portletsPath}/build/libs").listFiles().find { it.name.endsWith(".war") }
 				deployWar(warFile.path)
 			}
 			return "$activeProject.name successfully deployed."
@@ -508,7 +512,7 @@ Port $activeProject.port is not responding..."""
 
 	@CliCommand(value = "prod-war", help = "Build and deploy the active project")
 	def prodWar() {
-		
+
 		if (activeProject) {
 			CommandUtils.executeGradle(activeProject.portletsPath, "war -Penv=prod")
 			return "Prod WAR file generated in ${activeProject.portletsPath}/build/libs."

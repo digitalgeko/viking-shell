@@ -29,7 +29,8 @@ class ReloadUtils {
 		try {
 			if (!monitorsMap["$projectPath${File.separator}$projectName"]) {
 				def RELOADABLES = [
-						[projectType: "portlet", path:"$projectPath${File.separator}$projectName${File.separator}public", basePath: "$projectPath${File.separator}$projectName"]
+						[projectType: "portlet", path:"$projectPath${File.separator}$projectName${File.separator}public", basePath: "$projectPath${File.separator}$projectName"],
+						[projectType: "portlet", path:"$projectPath${File.separator}$projectName${File.separator}viking/views", basePath: "$projectPath${File.separator}$projectName"]
 				]
 
 				new File(projectPath).listFiles().each {
@@ -48,7 +49,7 @@ class ReloadUtils {
 				}
 
 				def getDestTempTomcatDir = { suffix ->
-					new File(tomcatPath, "temp").listFiles().findAll() { it.name.endsWith(suffix) }.max {new Integer(it.name - "-$suffix")}
+					new File(tomcatPath, "temp").listFiles().findAll { it.name.endsWith(suffix) }.max { it.lastModified() }
 				}
 
 				def getDestWebappsDir = { contextPath ->
@@ -60,7 +61,14 @@ class ReloadUtils {
 					try {
 						def reloadable = RELOADABLES.find { srcFile.path.startsWith(it.path) }
 						def relativePath = srcFile.path - reloadable.path
-
+						if (srcFile.path.contains("/viking/views")) {
+							if (srcFile.name.endsWith(".js")) {
+								relativePath = "/js"+relativePath
+							} else if (srcFile.name.endsWith(".coffee")) {
+								relativePath = "/coffee"+relativePath
+							}
+						}
+						println "relativePath: $relativePath"
 						File destFile = null
 						switch (reloadable.projectType) {
 							case "portlet":
@@ -73,7 +81,8 @@ class ReloadUtils {
 						}
 
 						if (srcFile.name.endsWith(".coffee")) {
-							CommandUtils.execCommand(["coffee", "--bare", "--output", destFile.parent.replace("${File.separator}coffee", "${File.separator}js"), "--compile", srcFile.path])
+							def destPath = destFile.parent.replace("${File.separator}coffee", "${File.separator}js")
+							CommandUtils.execCommand(["coffee", "--bare", "--output", destPath, "--compile", srcFile.path])
 						} else {
 							Files.copy(srcFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
 						}
@@ -90,7 +99,6 @@ class ReloadUtils {
 					} catch (e) {
 						e.printStackTrace()
 					}
-
 				}
 
 				def fm = new DefaultFileMonitor(new FileListener() {
