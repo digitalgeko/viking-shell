@@ -582,7 +582,7 @@ Port $activeProject.port is not responding..."""
 			if (version == "latest") {
 				version = VersionUtils.latestVersion
 			}
-			def versionZipURL = "https://github.com/digitalgeko/viking-shell/releases/download/viking-shell-$version/viking-shell.zip"
+			def versionZipURL = "https://github.com/digitalgeko/viking-shell/releases/download/viking-shell-$version/viking-shell-${version}.zip"
 			try {
 				CommandUtils.download(versionZipURL, ".", "viking-shell-${version}.zip", installationDir)
 			} catch (e) {
@@ -590,7 +590,7 @@ Port $activeProject.port is not responding..."""
 				return
 			}
 
-			def zipFile = new File(installationDir, "viking-shell.zip")
+			def zipFile = new File(installationDir, "viking-shell-${version}.zip")
 			CommandUtils.unzip(zipFile.path, installationDir)
 			zipFile.delete()
 			if (CommandUtils.execCommand("viking-shell version", false, true).toString().contains(version)) {
@@ -606,8 +606,13 @@ https://github.com/digitalgeko/viking-shell/releases/latest
 			}
 		} else {
 			println """
-Please edit your ~/.viking-shell/conf/init.conf and set a variable 'viking-installation-dir' where you have installed viking-shell, for example:
+Please edit the ~/.viking-shell/conf/init.conf and set a variable 'viking-installation-dir' where you have installed viking-shell, for example:
 var set --name viking-installation-dir --value "/opt/viking-shell"
+
+Reload the initial configuration by executing:
+var reload
+
+Then execute install-shell again.
 """
 		}
 

@@ -40,10 +40,10 @@ class CommandUtils {
 		}
         def output = handleInputStream(proc.in, verbose, returnOutput)
 		def errOutput = handleInputStream(proc.err, true, returnOutput)
-
 		proc.waitFor()
+
         if (proc.exitValue() == 0) {
-            return output
+            return output + "\n" + errOutput
         } else {
             throw new Exception(errOutput)
         }

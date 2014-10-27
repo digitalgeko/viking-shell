@@ -105,6 +105,12 @@ Please install also Xcode's latest version."""
 				CommandUtils.execCommand("brew install node", true)
 				CommandUtils.execCommand("npm install -g coffee-script", true)
 			}
+
+			if (!CommandUtils.isInstalled("mvn")) {
+				println "Maven not found, installing..."
+				updateBrew(performUpdate)
+				CommandUtils.execCommand("brew install maven", true)
+			}
 		}
     }
 

@@ -1,9 +1,11 @@
 package org.viking.shell.commands
 
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.shell.core.CommandMarker
 import org.springframework.shell.core.annotation.CliCommand
 import org.springframework.shell.core.annotation.CliOption
 import org.springframework.stereotype.Component
+import org.viking.shell.commands.utils.CommandUtils
 
 /**
  * Created by juanitoramonster on 4/10/14.
@@ -13,7 +15,10 @@ class VarCommands implements CommandMarker {
 
     def variables = [:]
 
-    @CliCommand(value = "var set", help = "Set a variable in the shell's context.")
+	@Autowired
+	def ConfReader confReader
+
+	@CliCommand(value = "var set", help = "Set a variable in the shell's context.")
     def set(
             @CliOption(
                 key = "name",
@@ -129,4 +134,10 @@ class VarCommands implements CommandMarker {
         }
         return varList
     }
+
+	@CliCommand(value = "var reload", help = "Reloads your variables from.")
+	def reload() {
+		confReader.readConf()
+		return "Variables from ~/.viking-shell/conf/init.conf are now reloaded."
+	}
 }

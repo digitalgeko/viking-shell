@@ -35,12 +35,12 @@ Viking shell $version
 		if (!VersionUtils.hasLatestVersion) {
 			txt +=
 					"""
-Viking shell ${VersionUtils.latestVersion} is out!
+Viking shell ${VersionUtils.latestVersion} has been released!
 
-To install the latest version of viking-shell, execute:
+To install the latest version of viking-shell, execute the following command in this shell:
 install-shell --version latest
 
-or install it manually:
+or install it manually by downloading from:
 https://github.com/digitalgeko/viking-shell/releases/latest
 
 ------------------------------------------------------------
