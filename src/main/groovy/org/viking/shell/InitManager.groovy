@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component
 import org.viking.shell.commands.CheckDependencies
 import org.viking.shell.commands.ConfReader
 import org.viking.shell.commands.VarCommands
+import org.viking.shell.commands.utils.CommandUtils
 import org.viking.shell.commands.utils.NetworkUtils
 import org.viking.shell.commands.utils.VersionUtils
 
@@ -37,11 +38,13 @@ class InitManager {
 
 		if (NetworkUtils.hasInternet) {
 			log.info "Updating templates..."
-			confReader.updateTemplates()
+			try {
+				confReader.updateTemplates()
+			} catch (e) {
+				log.warning("Templates could not updated")
+			}
 		}
 
 	}
-
-
 
 }

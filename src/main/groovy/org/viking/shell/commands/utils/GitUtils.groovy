@@ -63,6 +63,8 @@ class GitUtils {
 		if (username && password) {
 			pull.setCredentialsProvider(getGitCredentials())
 		}
-		pull.call()
+		def result = pull.call()
+		println result
+		result
 	}
 }

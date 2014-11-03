@@ -57,7 +57,12 @@ class CommandUtils {
 			String line
 			while ((line = br.readLine()) != null) {
 				if (printOutput) {
-					println(line)
+					if (line.trim().endsWith(" KB")) {
+						print("\r$line                ")
+					} else {
+						println(line)
+					}
+
 				}
 				if (returnOutput) {
 					output += line

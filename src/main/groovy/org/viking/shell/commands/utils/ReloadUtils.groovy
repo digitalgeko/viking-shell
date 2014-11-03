@@ -68,7 +68,7 @@ class ReloadUtils {
 								relativePath = "/coffee"+relativePath
 							}
 						}
-						println "relativePath: $relativePath"
+
 						File destFile = null
 						switch (reloadable.projectType) {
 							case "portlet":
@@ -97,7 +97,7 @@ class ReloadUtils {
 							}
 						}
 					} catch (e) {
-						e.printStackTrace()
+//						e.printStackTrace()
 					}
 				}
 
@@ -134,7 +134,7 @@ class ReloadUtils {
 				monitorsMap["$projectPath${File.separator}$projectName"] = fm
 			}
 		} catch (e) {
-			e.printStackTrace()
+//			e.printStackTrace()
 		}
 
 	}

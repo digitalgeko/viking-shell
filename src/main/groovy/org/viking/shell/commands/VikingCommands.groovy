@@ -160,7 +160,10 @@ class VikingCommands implements CommandMarker {
 	}
 
 	@CliCommand(value = "setup-project", help = "Setup project.")
-	def setupProject() {
+	def setupProject(@CliOption(
+			key = "isNewProject",
+			unspecifiedDefaultValue = "false"
+	) String isNewProject) {
 		
 		if (activeProject) {
 			ConsoleReader cr = new ConsoleReader()
@@ -291,7 +294,7 @@ class VikingCommands implements CommandMarker {
 					])
 				}
 				fullDeploy()
-				restoreDatabase()
+				restoreDatabase(isNewProject)
 			} catch(e) {
 				e.printStackTrace()
 			}
@@ -393,7 +396,7 @@ You may now proceed with the new project creation."""
 			varCommands.set("activeProjectDir", projectDir.name, null)
 
 			addPortlet(projectName)
-			setupProject()
+			setupProject(true.toString())
 			println "** Project ${projectName} was successfully created and is now the active project. **"
 		} catch (e) {
 			e.printStackTrace()
@@ -713,7 +716,7 @@ Then execute install-shell again.
 					tempDir.renameTo(projectDir)
 					varCommands.set("activeProject", projectName, null)
 					varCommands.set("activeProjectDir", projectDir.name, null)
-					setupProject()
+					setupProject(false.toString())
 					return "Project $projectName successfully installed"
 				} else {
 					return "Project $projectName already exists, please delete the project to install it again. Existing project's path is: $projectDir.path"
@@ -732,7 +735,10 @@ Then execute install-shell again.
 	}
 
 	@CliCommand(value = "restore-database", help = "Restore database.")
-	def restoreDatabase() {
+	def restoreDatabase(@CliOption(
+			key = "isNewProject",
+			unspecifiedDefaultValue = "false"
+	) String isNewProject) {
 		if (isOfflineCommandAvailable()) {
 			if (activeProject) {
 				ConsoleReader cr = new ConsoleReader()
@@ -741,7 +747,12 @@ Then execute install-shell again.
 				def backupDirs = backupsFolder.listFiles().findAll{!it.name.startsWith(".")}
 				File backupDir
 				def options = backupDirs.collect{it.name} + 'No backup (Just drop and create database)'
-				def backupDirIndex = requestOption(options, "The following backups are available:", "backup index: ", "Invalid backup.")
+				def backupDirIndex
+				if (isNewProject != "false") {
+					backupDirIndex = 0
+				} else {
+					backupDirIndex = requestOption(options, "The following backups are available:", "backup index: ", "Invalid backup.")
+				}
 				backupDir = backupDirIndex < backupDirs.size() ? backupDirs[backupDirIndex] : null
 
 				// TODO: use conf database connection
