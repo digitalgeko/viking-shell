@@ -197,7 +197,7 @@ class VikingCommands implements CommandMarker {
 
 				try {
 					new File("${CommandUtils.homeDir}/.viking-shell/downloads/${lrVersionKey}/").eachFile {
-						if (it.name.endsWith(".zip")){
+						if (it.name.endsWith(".zip")) {
 							CommandUtils.unzip(it.path, "${projectDir}")
 						}
 					}
@@ -222,12 +222,21 @@ class VikingCommands implements CommandMarker {
 					} else {
 						setEnvName = "setenv.sh"
 					}
-					CommandUtils.generate("templates/baseConf/configFiles/$setEnvName", "${CommandUtils.getTomcatPath(projectDir)}/bin/$setEnvName", [
+					CommandUtils.generate("templates/baseConf/configFiles/tomcat-testable-files/$setEnvName", "${CommandUtils.getTomcatPath(projectDir)}/bin/$setEnvName", [
 							"projectName":projectName,
 							"tomcatPath": CommandUtils.getTomcatPath(projectDir),
 							"dbuser": varCommands.get("dbuser", "databaseConnection"),
 							"dbpass": dbpass,
 					])
+
+
+					def tomcatManagerDir = new File("${CommandUtils.homeDir}${File.separator}.viking-shell", "templates/baseConf/configFiles/tomcat-testable-files/manager")
+					def webappsDir = new File("${CommandUtils.getTomcatPath(projectDir)}/webapps")
+					FileUtils.copyDirectoryToDirectory(tomcatManagerDir, webappsDir)
+
+					def tomcatUsersXMLFile = new File("${CommandUtils.homeDir}${File.separator}.viking-shell", "templates/baseConf/configFiles/tomcat-testable-files/tomcat-users.xml")
+					def tomcatConfDir = new File("${CommandUtils.getTomcatPath(projectDir)}/conf")
+					FileUtils.copyFileToDirectory(tomcatUsersXMLFile, tomcatConfDir)
 
 					if (OsUtils.isWindows()) {
 						def binDir = "${CommandUtils.getTomcatPath(projectDir)}\\bin"
@@ -321,6 +330,15 @@ class VikingCommands implements CommandMarker {
 				return "dev.conf file already exists"
 			}
 
+		}
+		return "Please set an active project."
+	}
+
+	@CliCommand(value = "test", help = "Runs project tests.")
+	def test() {
+		if (activeProject) {
+			CommandUtils.executeGradle(activeProject.portletsPath, "test")
+			return "Tests executed"
 		}
 		return "Please set an active project."
 	}
