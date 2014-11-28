@@ -41,7 +41,7 @@ class InitManager {
 			try {
 				confReader.updateTemplates()
 			} catch (e) {
-				log.warning("Templates could not updated")
+				log.warning("Templates could not be updated. Reason: $e.message")
 			}
 		}
 
