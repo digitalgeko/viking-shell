@@ -1,8 +1,11 @@
 package org.viking.shell.commands.utils
 
+import org.eclipse.jgit.api.CheckoutCommand
+import org.eclipse.jgit.api.CreateBranchCommand
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.PullCommand
 import org.eclipse.jgit.lib.Repository
+import org.eclipse.jgit.lib.StoredConfig
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 
@@ -18,7 +21,14 @@ class GitUtils {
 	String username
 	String password
 
-	String branch = "master"
+	String getBranch() {
+		if (VersionUtils.currentVersion == "develop") {
+			"develop"
+		} else {
+			"viking-shell-templates-${VersionUtils.currentVersion}"
+		}
+
+	}
 
 	def getRepoFolder() {
 		def file = new File(localFolderPath)
@@ -48,15 +58,24 @@ class GitUtils {
 	}
 
 	def pull() {
-		ensureCloneRepo();
-
-		FileRepositoryBuilder builder = new FileRepositoryBuilder();
+		ensureCloneRepo()
+		FileRepositoryBuilder builder = new FileRepositoryBuilder()
 		Repository repository = builder
 				.readEnvironment()
 				.findGitDir(getRepoFolder())
 				.build();
+		def git = new Git(repository)
 
-		PullCommand pull = new PullCommand(repository)
+		StoredConfig config = git.repository.config
+		config.setString("branch", branch, "merge", "refs/heads/$branch")
+		config.save()
+
+		git.checkout()
+				.setCreateBranch(false)
+				.setName(branch)
+				.call()
+
+		PullCommand pull = git.pull()
 
 		println "Pulling from $gitRepo..."
 
@@ -64,7 +83,6 @@ class GitUtils {
 			pull.setCredentialsProvider(getGitCredentials())
 		}
 		def result = pull.call()
-		println result
 		result
 	}
 }

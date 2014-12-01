@@ -335,9 +335,21 @@ class VikingCommands implements CommandMarker {
 	}
 
 	@CliCommand(value = "test", help = "Runs project tests.")
-	def test() {
+	def test(
+			@CliOption(key = "regex", help = "Regex to match which tests should run") String regex,
+			@CliOption(key = "clean", specifiedDefaultValue = "true", unspecifiedDefaultValue = "false") String clean
+	) {
 		if (activeProject) {
-			CommandUtils.executeGradle(activeProject.portletsPath, "test")
+			def testCommand = ""
+			if (clean == "true") {
+				testCommand += " clean "
+			}
+			if (regex) {
+				testCommand += " -Dtest.single=\"$regex\" "
+			}
+			testCommand += " test "
+			CommandUtils.executeGradle(activeProject.portletsPath, testCommand)
+
 			return "Tests executed"
 		}
 		return "Please set an active project."
