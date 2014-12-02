@@ -8,6 +8,8 @@ import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.lib.StoredConfig
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
+import org.springframework.beans.factory.annotation.Autowired
+import org.viking.shell.commands.VarCommands
 
 /**
  * User: mardo
@@ -21,13 +23,20 @@ class GitUtils {
 	String username
 	String password
 
+	@Autowired
+	VarCommands varCommands
+
 	String getBranch() {
+		def templatesBranch = varCommands.get("templatesBranch", "")
+		if (templatesBranch) {
+			return templatesBranch
+		}
+
 		if (VersionUtils.currentVersion == "develop") {
 			"develop"
 		} else {
 			"viking-shell-templates-${VersionUtils.currentVersion}"
 		}
-
 	}
 
 	def getRepoFolder() {

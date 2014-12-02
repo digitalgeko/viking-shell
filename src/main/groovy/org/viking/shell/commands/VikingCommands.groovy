@@ -317,7 +317,7 @@ class VikingCommands implements CommandMarker {
 		name && name.matches("[a-zA-Z]+")
 	}
 
-	@CliCommand(value = "init-dev-conf", help = "Initializes dev.conf file.")
+	@CliCommand(value = "init-dev-conf", help = "Initializes dev.conf file of your portlets project.")
 	def initDevConf() {
 		if (activeProject) {
 			def devConfFile = new File("$activeProject.portletsPath/conf/dev.conf")
@@ -543,11 +543,11 @@ Port $activeProject.port is not responding..."""
 		return "Please set an active project."
     }
 
-	@CliCommand(value = "prod-war", help = "Build and deploy the active project")
+	@CliCommand(value = "prod-war", help = "Builds a WAR file without the dev.conf file, ready to deploy to production.")
 	def prodWar() {
 
 		if (activeProject) {
-			CommandUtils.executeGradle(activeProject.portletsPath, "war -Penv=prod")
+			CommandUtils.executeGradle(activeProject.portletsPath, "clean war -Penv=prod")
 			return "Prod WAR file generated in ${activeProject.portletsPath}/build/libs."
 		}
 		return "Please set an active project."
@@ -720,7 +720,7 @@ Then execute install-shell again.
 		return "Please set an active project."
     }
 
-	@CliCommand(value = "install-project", help = "Updates templates located in ~/.viking-shell/templates.")
+	@CliCommand(value = "install-project", help = "Installs a project from a git repository.")
 	def installProject(@CliOption(
 			key = "gitRepository"
 	) String gitRepository) {
