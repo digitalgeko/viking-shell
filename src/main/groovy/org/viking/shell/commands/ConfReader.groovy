@@ -60,7 +60,7 @@ class ConfReader {
 
 		def templatesDir = new File("$CommandUtils.homeDir${File.separator}.viking-shell${File.separator}templates")
 
-		def gitUtils = new GitUtils()
+		def gitUtils = new GitUtils(templatesBranch: varCommands.get("templatesBranch", ""))
 		gitUtils.localFolderPath = templatesDir.path
 		gitUtils.gitRepo = varCommands.get("templatesRepo", "")
 		if (gitUtils.gitRepo == null) {

@@ -23,11 +23,9 @@ class GitUtils {
 	String username
 	String password
 
-	@Autowired
-	VarCommands varCommands
+	String templatesBranch
 
 	String getBranch() {
-		def templatesBranch = varCommands.get("templatesBranch", "")
 		if (templatesBranch) {
 			return templatesBranch
 		}
