@@ -5,6 +5,7 @@ import org.springframework.shell.core.JLineShellComponent
 import org.springframework.stereotype.Component
 import org.viking.shell.commands.utils.CommandUtils
 import org.viking.shell.commands.utils.GitUtils
+import org.viking.shell.commands.utils.VersionUtils
 import org.viking.shell.models.VikingProject
 
 /**
@@ -60,7 +61,16 @@ class ConfReader {
 
 		def templatesDir = new File("$CommandUtils.homeDir${File.separator}.viking-shell${File.separator}templates")
 
-		def gitUtils = new GitUtils(templatesBranch: varCommands.get("templatesBranch", ""))
+		def branch = varCommands.get("templatesBranch", "")
+		if (!branch) {
+			if (VersionUtils.currentVersion == "develop") {
+				branch = "develop"
+			} else {
+				branch = "viking-shell-templates-${VersionUtils.currentVersion}"
+			}
+		}
+
+		def gitUtils = new GitUtils(branch: branch)
 		gitUtils.localFolderPath = templatesDir.path
 		gitUtils.gitRepo = varCommands.get("templatesRepo", "")
 		if (gitUtils.gitRepo == null) {

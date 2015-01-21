@@ -721,9 +721,10 @@ Then execute install-shell again.
     }
 
 	@CliCommand(value = "install-project", help = "Installs a project from a git repository.")
-	def installProject(@CliOption(
-			key = "gitRepository"
-	) String gitRepository) {
+	def installProject(
+			@CliOption(key = "gitRepository") String gitRepository,
+			@CliOption(key = "gitBranch", unspecifiedDefaultValue = "master") String branch
+	) {
 		ConsoleReader cr = new ConsoleReader()
 
 		while(!gitRepository) {
@@ -732,7 +733,7 @@ Then execute install-shell again.
 
 		try {
 			def tempDir = Files.createTempDirectory("temp_viking_project_dir").toFile()
-			def gitUtils = new GitUtils()
+			def gitUtils = new GitUtils(branch: branch)
 			gitUtils.localFolderPath = tempDir.path
 			gitUtils.gitRepo = gitRepository
 			gitUtils.pull()

@@ -23,19 +23,7 @@ class GitUtils {
 	String username
 	String password
 
-	String templatesBranch
-
-	String getBranch() {
-		if (templatesBranch) {
-			return templatesBranch
-		}
-
-		if (VersionUtils.currentVersion == "develop") {
-			"develop"
-		} else {
-			"viking-shell-templates-${VersionUtils.currentVersion}"
-		}
-	}
+	String branch = "master"
 
 	def getRepoFolder() {
 		def file = new File(localFolderPath)
