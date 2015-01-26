@@ -10,7 +10,7 @@ apply plugin: 'application'
 
 def groupId = 'org.vikingportlets'
 def artifactId = "viking-shell"
-def versionNumber = 'develop'
+def versionNumber = '0.2.0'
 
 group = groupId
 version = versionNumber
