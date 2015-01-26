@@ -50,7 +50,9 @@ class ConfReader {
 			}
         }
 
-        vikingShellConfDir.listFiles().each { file ->
+		def confFiles = [new File(templatesDir, "baseConf${File.separator}$INIT_FILE")]
+		confFiles.addAll(vikingShellConfDir.listFiles())
+		confFiles.each { file ->
             file.readLines().each { line ->
                 shell.executeCommand(line)
             }
