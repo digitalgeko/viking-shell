@@ -610,21 +610,26 @@ Port $activeProject.port is not responding..."""
 			key = "version",
 			mandatory = true
 	) String version) {
-		String installationDir = varCommands.get("viking-installation-dir", null)
-		if (installationDir) {
+		String installationPath = varCommands.get("viking-installation-dir", null)
+		def installationDir = new File(installationPath)
+		if (installationDir.name == "viking-shell") {
+			installationPath = installationDir.parent
+			installationDir = installationDir.parentFile
+		}
+		if (installationPath) {
 			if (version == "latest") {
 				version = VersionUtils.latestVersion
 			}
 			def versionZipURL = "https://github.com/digitalgeko/viking-shell/releases/download/viking-shell-$version/viking-shell-${version}.zip"
 			try {
-				CommandUtils.download(versionZipURL, ".", "viking-shell-${version}.zip", installationDir)
+				CommandUtils.download(versionZipURL, ".", "viking-shell-${version}.zip", installationPath)
 			} catch (e) {
 				println "Version '$version' is not valid."
 				return
 			}
 
-			def zipFile = new File(installationDir, "viking-shell-${version}.zip")
-			CommandUtils.unzip(zipFile.path, installationDir)
+			def zipFile = new File(installationPath, "viking-shell-${version}.zip")
+			CommandUtils.unzip(zipFile.path, installationPath)
 			zipFile.delete()
 			if (CommandUtils.execCommand("viking-shell version", false, true).toString().contains(version)) {
 				println "Viking shell successfully updated to the latest version."
@@ -632,7 +637,7 @@ Port $activeProject.port is not responding..."""
 				System.exit(0)
 			} else {
 				println """
-Viking shell is still not at the latest version, Are you sure you have your 'viking-installation-dir' correctly set? viking-installation-dir: $installationDir
+Viking shell is still not at the latest version, Are you sure you have your 'viking-installation-dir' correctly set? viking-installation-dir: $installationPath
 If this directory is not correct please change it in your ~/.viking-shell/conf/init.conf, or install viking-shell manually:
 https://github.com/digitalgeko/viking-shell/releases/latest
 """
