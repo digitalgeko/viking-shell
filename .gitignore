@@ -4,3 +4,4 @@ build
 *.iml
 gradle/
 .idea
+.DS_Store

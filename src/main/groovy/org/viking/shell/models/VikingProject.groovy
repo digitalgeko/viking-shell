@@ -23,10 +23,13 @@ class VikingProject {
 
 	def isRunning () {
 		try {
-			new URL("http://localhost:"+port).text
+            HttpURLConnection conn = new URL("http://localhost:"+port).openConnection()
+            conn.setRequestMethod("GET");
+            conn.connect()
+//            conn.getResponseCode()
 			return true
 		} catch (e) {
-			return false
+            return false
 		}
 	}
 
