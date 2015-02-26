@@ -65,12 +65,22 @@ class GitUtils {
 		config.setString("branch", branch, "merge", "refs/heads/$branch")
 		config.save()
 
-		git.checkout()
-				.setCreateBranch(false)
-				.setName(branch)
-				.call()
+        try {
+            git.checkout()
+                    .setCreateBranch(false)
+                    .setName(branch)
+                    .call()
+        } catch (e) {
+            git.checkout()
+                    .setCreateBranch(true)
+                    .setName(branch)
+                    .setStartPoint("origin/$branch")
+                    .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.SET_UPSTREAM)
+                    .setForce(true)
+                    .call()
+        }
 
-		PullCommand pull = git.pull()
+        PullCommand pull = git.pull()
 
 		println "Pulling from $gitRepo..."
 
