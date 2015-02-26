@@ -499,7 +499,7 @@ Something is listening in port $activeProject.port... might be your Liferay!"""
 
 				} catch (Exception e) {
 					return """Active project: $activeProject.name
-Port $activeProject.port is not responding..."""
+Port $activeProject.port is not responding, or is responding with an error (i.e. error 500) ..."""
 				}
 			}
 		} else {
